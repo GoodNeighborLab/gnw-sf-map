@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    
+    <!-- SEO and Meta Tags -->
+    <title>2026 SF Good Neighbor Week Map - Good Neighbor Lab</title>
+    <meta name="description" content="Explore San Francisco's neighborhood associations, public libraries, volunteer organizations, local newsrooms, award winners, and events for the 2026 SF Good Neighbor Week.">
+    <meta property="og:title" content="2026 SF Good Neighbor Week Map">
+    <meta property="og:description" content="A multi-layered interactive map of San Francisco neighborhood groups, third spaces, newsrooms, and community events.">
+    <meta property="og:type" content="website">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- MapLibre GL JS CSS -->
+    <link href="https://unpkg.com/maplibre-gl@4.3.0/dist/maplibre-gl.css" rel="stylesheet" />
+    
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Modern Premium Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo-container">
+                    <span class="logo-icon"><i data-lucide="heart-handshake"></i></span>
+                    <div class="logo-text">
+                        <span class="logo-title">Good Neighbor Lab</span>
+                        <span class="logo-badge">2026 SF Map Project</span>
+                    </div>
+                </div>
+                <div class="title-container">
+                    <h1>SF Good Neighbor Week Map</h1>
+                    <p class="subtitle">Connecting our community, neighborhood by neighborhood, block by block.</p>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <button id="theme-toggle" class="btn-icon" aria-label="Toggle dark mode">
+                    <i data-lucide="moon" class="icon-dark"></i>
+                    <i data-lucide="sun" class="icon-light"></i>
+                </button>
+                <button id="about-btn" class="btn-primary">
+                    <i data-lucide="info"></i>
+                    <span>About</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Layout -->
+        <main class="dashboard-container">
+            <!-- Left Side: Interactive Map -->
+            <section class="map-container-wrapper">
+                <div id="map"></div>
+                
+                <!-- Floating Glassmorphic Layer Selector -->
+                <div class="layer-control-panel">
+                    <span class="panel-label">Map Layers</span>
+                    <div class="layer-buttons">
+                        <button class="layer-btn active" data-layer="neighborhoods" id="btn-neighborhoods">
+                            <i data-lucide="map"></i>
+                            <span>Neighborhoods</span>
+                        </button>
+                        <button class="layer-btn" data-layer="libraries" id="btn-libraries">
+                            <i data-lucide="book-open"></i>
+                            <span>Libraries</span>
+                        </button>
+                        <button class="layer-btn" data-layer="civic_orgs" id="btn-civic-orgs">
+                            <i data-lucide="users"></i>
+                            <span>Civic Orgs</span>
+                        </button>
+                        <button class="layer-btn" data-layer="newsrooms" id="btn-newsrooms">
+                            <i data-lucide="newspaper"></i>
+                            <span>Newsrooms</span>
+                        </button>
+                        <button class="layer-btn" data-layer="award_winners" id="btn-award-winners">
+                            <i data-lucide="award"></i>
+                            <span>Award Winners</span>
+                        </button>
+                        <button class="layer-btn" data-layer="events" id="btn-events">
+                            <i data-lucide="calendar"></i>
+                            <span>Events</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Side: Details Side Panel -->
+            <aside class="sidebar-container" id="sidebar">
+                <div class="sidebar-header">
+                    <h2 id="sidebar-title">Neighborhoods Layer</h2>
+                    <span class="sidebar-badge" id="layer-badge">Active</span>
+                </div>
+                
+                <div class="sidebar-scroll-content">
+                    <div id="details-content">
+                        <!-- Dynamic content injected here -->
+                        <div class="welcome-card">
+                            <div class="welcome-icon">
+                                <i data-lucide="navigation"></i>
+                            </div>
+                            <h3>Explore San Francisco</h3>
+                            <p>Hover over a neighborhood polygon on the map to view instant demographics and community groups.</p>
+                            <p class="welcome-hint">Switch layers at the bottom of the map to see public libraries, local newsrooms, civic organizations, Good Neighbor Week events, and award winners.</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+        
+        <!-- About Modal (Glassmorphic Backdrop Overlay) -->
+        <div id="about-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <button id="modal-close" class="modal-close-btn" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <div class="modal-icon"><i data-lucide="heart-handshake"></i></div>
+                    <h2>2026 SF Good Neighbor Week</h2>
+                </div>
+                <div class="modal-body">
+                    <p>Good Neighbor Week is an annual San Francisco campaign dedicated to fostering community connection, greening our blocks, and amplifying hyper-local support networks.</p>
+                    
+                    <h3>About the Map Project</h3>
+                    <p>This multi-layered interactive dashboard was created by the <strong>Good Neighbor Lab</strong> to catalog and share community infrastructure. It acts as an easy-to-use guide for residents looking to connect with neighborhood associations, local newsrooms, public library branches, and active volunteer organizations.</p>
+                    
+                    <p>Inspired by the work of Cartographer <strong>Stephen Braitsch</strong>, the map is designed for seamless navigation and rapid neighborhood exploration.</p>
+                    
+                    <h3>Technical Stack</h3>
+                    <ul>
+                        <li><strong>Map Engine:</strong> MapLibre GL JS (GPU-accelerated vector mapping)</li>
+                        <li><strong>Basemaps:</strong> CARTO Positron (Light) and Dark Matter (Dark)</li>
+                        <li><strong>Data Sources:</strong> OpenStreetMap, local community CSV sheets, and SF planning neighborhood boundary GeoJSON.</li>
+                        <li><strong>Iconography:</strong> Lucide Icons</li>
+                    </ul>
+                    
+                    <div class="modal-footer">
+                        <p>Drafted by Julia Gitis, Good Neighbor Lab &copy; 2026</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Third-Party Libraries -->
+    <!-- MapLibre GL JS -->
+    <script src="https://unpkg.com/maplibre-gl@4.3.0/dist/maplibre-gl.js"></script>
+    
+    <!-- PapaParse CSV Parser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Lucide Icon Library -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- App Logic script -->
+    <script src="app.js"></script>
+</body>
+</html>

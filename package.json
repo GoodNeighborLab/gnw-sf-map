@@ -1,0 +1,19 @@
+{
+  "name": "sf-good-neighbor-map",
+  "version": "1.0.0",
+  "description": "Multi-layered interactive map of San Francisco for Good Neighbor Week 2026 using MapLibre GL JS and PapaParse.",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx -y http-server -p 3000"
+  },
+  "keywords": [
+    "san-francisco",
+    "maplibre",
+    "interactive-map",
+    "geojson",
+    "csv",
+    "good-neighbor"
+  ],
+  "author": "Julia Gitis, Good Neighbor Lab",
+  "license": "MIT"
+}

@@ -1,0 +1,8 @@
+name,neighborhood,latitude,longitude,website,logo_filename,description
+Mission Local,Mission,37.7523,-122.4134,https://missionlocal.org,missionlocal.png,"Independent, bilingual community news site focusing on neighborhood politics, culture, and crime in the Mission."
+El Tecolote,Mission,37.7525,-122.4188,https://eltecolote.org,eltecolote.png,"The oldest Spanish/English bilingual newspaper in Northern California, amplifying the voices of the Mission Latino community."
+Richmond Review,Inner Richmond,37.7788,-122.4632,https://sfrichmondreview.com,richmondreview.png,"Monthly local newspaper covering news, business openings, and community updates in the Richmond District."
+Sunset Beacon,Outer Sunset,37.7431,-122.4831,https://sfrichmondreview.com/category/sunset-beacon,sunsetbeacon.png,"Monthly printed community paper covering schools, housing, and local updates in the Sunset District."
+The Potrero View,Potrero Hill,37.7592,-122.3982,https://www.potreroview.net,potreroview.png,"A non-profit community newspaper highlighting issues affecting Potrero Hill, Dogpatch, and Mission Bay."
+SF Standard,Financial District,37.7941,-122.4002,https://sfstandard.com,sfstandard.png,"A digital-first news organization reporting on local city politics, neighborhoods, and culture across all of SF."
+Wind Newspaper,Chinatown,37.7952,-122.4082,https://windnewspaper.com,wind.png,Bilingual Chinese/English publication delivering hyper-local news and resource information to Chinatown residents.
