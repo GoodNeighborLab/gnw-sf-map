@@ -69,13 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `,
         
         // Neighborhood detail view
-        neighborhood: (name, stats, groups) => {
-            const hasStats = !!stats;
-            const popStr = hasStats ? Number(stats.population).toLocaleString() : 'N/A';
-            const areaStr = hasStats ? stats.area_sq_mi : 'N/A';
-            const scoreStr = hasStats ? `${stats.civic_score}/100` : 'N/A';
-            const carsStr = hasStats ? `${stats.car_ownership_pct}%` : 'N/A';
-            
+        neighborhood: (name, _, groups) => {
             let groupsHtml = '<div class="no-data-msg">No community groups registered in this area yet.</div>';
             if (groups && groups.length > 0) {
                 groupsHtml = groups.map(g => `
@@ -103,27 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <span class="stat-area"><i data-lucide="map-pin" style="width:14px; height:14px; display:inline; vertical-align:middle; margin-right:4px;"></i>San Francisco District</span>
                     ${isLocked ? `<p style="font-size:11px; margin-top:8px; color: var(--accent); cursor: pointer; font-weight: 600;" id="unlock-btn"><i data-lucide="lock" style="width:12px; height:12px; display:inline; vertical-align:middle; margin-right:4px;"></i>Locked view. Click here to unlock</p>` : ''}
-                </div>
-
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <span class="stat-label"><i data-lucide="users-round"></i>Population</span>
-                        <span class="stat-value">${popStr}</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label"><i data-lucide="maximize-2"></i>Area Size</span>
-                        <span class="stat-value">${areaStr} <span style="font-size: 11px; font-weight: 500;">sq mi</span></span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label"><i data-lucide="car"></i>Car Owners</span>
-                        <span class="stat-value">${carsStr}</span>
-                        <span class="stat-desc">% households with cars</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label"><i data-lucide="activity"></i>Civic Score</span>
-                        <span class="stat-value" style="color: var(--accent-neon);">${scoreStr}</span>
-                        <span class="stat-desc">Community activity index</span>
-                    </div>
                 </div>
 
                 <div class="entity-list-section">
