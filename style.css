@@ -294,7 +294,8 @@ button {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     z-index: 5;
-    display: flex;
+    display: none; /* temporarily hide for now */
+    /* display: flex; */
     flex-direction: column;
     gap: 10px;
     align-items: center;
