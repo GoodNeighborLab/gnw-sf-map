@@ -43,29 +43,6 @@
     --ease-out-cubic: cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* Dark Mode Overrides */
-[data-theme="dark"] {
-    --bg-primary: #070a13; /* Rich Space Black */
-    --bg-secondary: #0f1322; /* Deep Dark Blue-Gray */
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --accent: #6366f1; /* Bright Indigo */
-    --accent-light: rgba(99, 102, 241, 0.15);
-    --accent-hover: #4f46e5;
-    --accent-neon: #34d399;
-    --border-color: rgba(31, 41, 55, 0.6);
-    --border-hover: rgba(75, 85, 99, 0.8);
-    
-    /* Dark Glassmorphism */
-    --glass-bg: rgba(15, 19, 34, 0.8);
-    --glass-border: rgba(255, 255, 255, 0.04);
-    
-    /* Dark Shadows */
-    --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-    --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
-}
-
 /* --- Reset & Base Elements --- */
 * {
     box-sizing: border-box;
@@ -156,10 +133,6 @@ button {
     transition: all var(--transition-normal) var(--ease-out-cubic);
 }
 
-[data-theme="dark"] .logo-icon {
-    background-color: rgba(99, 102, 241, 0.2);
-}
-
 .logo-text {
     display: flex;
     flex-direction: column;
@@ -248,15 +221,6 @@ button {
 
 .btn-primary:active {
     transform: translateY(0);
-}
-
-/* Theme Icon Toggle */
-.icon-light, [data-theme="dark"] .icon-dark {
-    display: none;
-}
-[data-theme="dark"] .icon-light {
-    display: block;
-    color: #fbbf24; /* Warm Yellow Sun */
 }
 
 /* --- Dashboard Container --- */
@@ -390,10 +354,6 @@ button {
     text-transform: uppercase;
 }
 
-[data-theme="dark"] .sidebar-badge {
-    background-color: rgba(99, 102, 241, 0.15);
-}
-
 .sidebar-scroll-content {
     flex: 1;
     overflow-y: auto;
@@ -423,10 +383,6 @@ button {
     align-items: center;
     justify-content: center;
     margin-bottom: 20px;
-}
-
-[data-theme="dark"] .welcome-icon {
-    background-color: rgba(99, 102, 241, 0.15);
 }
 
 .welcome-card h3 {
@@ -748,10 +704,6 @@ button {
     color: var(--accent);
 }
 
-[data-theme="dark"] .marker-pin-wrapper {
-    background-color: var(--bg-secondary);
-}
-
 .custom-marker.active .marker-pin-wrapper {
     background-color: var(--accent);
     color: #ffffff;
@@ -792,11 +744,13 @@ button {
 }
 
 /* Popups Styling */
-.maplibregl-popup {
+.maplibregl-popup,
+.mapboxgl-popup {
     z-index: 100;
 }
 
-.maplibregl-popup-content {
+.maplibregl-popup-content,
+.mapboxgl-popup-content {
     background: var(--glass-bg) !important;
     border: 1px solid var(--glass-border) !important;
     backdrop-filter: var(--glass-blur) !important;
@@ -807,16 +761,20 @@ button {
     font-family: var(--font-body) !important;
 }
 
-.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
     border-bottom-color: var(--glass-bg) !important;
 }
-.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
     border-top-color: var(--glass-bg) !important;
 }
-.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+.maplibregl-popup-anchor-left .maplibregl-popup-tip,
+.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
     border-right-color: var(--glass-bg) !important;
 }
-.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+.maplibregl-popup-anchor-right .maplibregl-popup-tip,
+.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
     border-left-color: var(--glass-bg) !important;
 }
 
