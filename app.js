@@ -3,6 +3,16 @@
    Powered by Mapbox GL JS and CSV Datasets.
 */
 
+// Basic Feature Flagging via URL
+const urlParams = new URLSearchParams(window.location.search);
+
+function isFeatureEnabled(flagName) {
+    if (!urlParams.has(flagName)) return false;
+
+    const value = urlParams.get(flagName).toLowerCase();
+    return value === 'true' || value === '1' || value === '';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- Application State ---
     const state = {
@@ -25,9 +35,16 @@ document.addEventListener('DOMContentLoaded', () => {
         popup: null
     };
 
+
     // Mapbox Configuration
-    const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoibWF4LWdudyIsImEiOiJjbXNwank2Z2YwMWp1MzBxYTNqcndwMnZxIn0.t3_3V-RreywMFjeYU919Fw';
-    const MAPBOX_STYLE_URL = 'mapbox://styles/max-gnw/cmspn14x2004101rggo7rfmns';
+    const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoiaGlsZHlzZiIsImEiOiJjbXJtZGlyejAzMXBwMnduOXh2anh5b3gzIn0.wYUboFNB3ng9zkGxk_W7Xg';
+
+    // Draft Styling Feature Flag
+    let MAPBOX_STYLE_URL = 'mapbox://styles/hildysf/cmrxkca9b00bt01rjhzeccw6f';
+    if (isFeatureEnabled('draft')) {
+        MAPBOX_STYLE_URL += '/draft';
+    }
+    console.log('Mapbox URL Loaded', MAPBOX_STYLE_URL);
 
     // --- Dynamic Templates for details-panel ---
     const templates = {
@@ -315,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const found = layers.find(l =>
             l.id === state.neighborhoodLayerId ||
             l['source-layer'] === '8103bc36377890461547' ||
-            (l.type === 'fill' && l.source && l.source.includes('0uxwos6ztu9i'))
+            (l.type === 'fill' && l.source && l.source.includes('fcjm9r9etz94'))
         );
         if (found) {
             state.neighborhoodLayerId = found.id;
@@ -331,6 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Hover highlighting & instant sidebar loading
         map.on('mousemove', layerId, (e) => {
             if (state.activeLayer !== 'neighborhoods') return;
+            console.log("Active layer n confirmed");
 
             if (e.features && e.features.length > 0) {
                 map.getCanvas().style.cursor = 'pointer';
