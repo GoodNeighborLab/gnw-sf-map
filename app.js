@@ -1,14 +1,22 @@
 /* 
    2026 SF Good Neighbor Week Map - Application Orchestrator
-   Handles GeoJSON/CSV fetching, MapLibre GL JS configuration, and Glassmorphic Sidebar Rendering.
+   Powered by Mapbox GL JS and CSV Datasets.
 */
+
+// Basic Feature Flagging via URL
+const urlParams = new URLSearchParams(window.location.search);
+
+function isFeatureEnabled(flagName) {
+    if (!urlParams.has(flagName)) return false;
+
+    const value = urlParams.get(flagName).toLowerCase();
+    return value === 'true' || value === '1' || value === '';
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Application State ---
     const state = {
         activeLayer: 'neighborhoods', // 'neighborhoods', 'libraries', 'civic_orgs', 'newsrooms', 'award_winners', 'events'
-        theme: 'light',
-        geojsonData: null,
         statsData: {},          // Map of neighborhood -> stats
         groupsData: {},         // Map of neighborhood -> list of groups
         librariesData: [],
@@ -16,43 +24,27 @@ document.addEventListener('DOMContentLoaded', () => {
         newsroomsData: [],
         awardWinnersData: [],
         eventsData: [],
-        
+
         // Map elements
         map: null,
+        neighborhoodLayerId: '8103bc36377890461547', // Layer in Mapbox Style
         markers: [],
-        hoveredFeatureId: null,
+        hoveredFeature: null,
         lockedNeighborhood: null, // Track clicked neighborhood to persist sidebar
         activeMarkerEl: null,     // Track clicked marker for styling
         popup: null
     };
 
-    // --- Styling Rules for Map Layers (Light/Dark themes) ---
-    const colors = {
-        light: {
-            fillDefault: '#4f46e5',
-            fillHover: '#10b981',
-            fillOpacityDefault: 0.1,
-            fillOpacityHover: 0.45,
-            borderDefault: '#4f46e5',
-            borderOpacity: 0.4,
-            borderWidth: 1.5
-        },
-        dark: {
-            fillDefault: '#6366f1',
-            fillHover: '#34d399',
-            fillOpacityDefault: 0.08,
-            fillOpacityHover: 0.4,
-            borderDefault: '#6366f1',
-            borderOpacity: 0.35,
-            borderWidth: 1.5
-        }
-    };
 
-    // Basemap URLs
-    const basemaps = {
-        light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-        dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
-    };
+    // Mapbox Configuration
+    const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoiaGlsZHlzZiIsImEiOiJjbXJtZGlyejAzMXBwMnduOXh2anh5b3gzIn0.wYUboFNB3ng9zkGxk_W7Xg';
+
+    // Draft Styling Feature Flag
+    let MAPBOX_STYLE_URL = 'mapbox://styles/hildysf/cmrxkca9b00bt01rjhzeccw6f';
+    if (isFeatureEnabled('draft')) {
+        MAPBOX_STYLE_URL += '/draft';
+    }
+    console.log('Mapbox URL Loaded', MAPBOX_STYLE_URL);
 
     // --- Dynamic Templates for details-panel ---
     const templates = {
@@ -63,13 +55,41 @@ document.addEventListener('DOMContentLoaded', () => {
                     <i data-lucide="navigation"></i>
                 </div>
                 <h3>Explore San Francisco</h3>
-                <p>Hover over a neighborhood polygon on the map to view demographics, car ownership rates, and active community groups.</p>
-                <p class="welcome-hint">Switch layers below the map to see public libraries, volunteer organizations, local newsrooms, award winners, and Good Neighbor Week events.</p>
+                <p>Hover over or click a neighborhood polygon on the map to view instant demographics, civic engagement score, car ownership rates, and community groups.</p>
+                <p class="welcome-hint">Switch layers at the bottom of the map to see public libraries, local newsrooms, civic organizations, Good Neighbor Week events, and award winners.</p>
             </div>
         `,
-        
+
         // Neighborhood detail view
-        neighborhood: (name, _, groups) => {
+        neighborhood: (name, stats, groups) => {
+            let statsHtml = '';
+            if (stats) {
+                statsHtml = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-label"><i data-lucide="users" style="width:12px; height:12px;"></i> Population</span>
+                            <span class="stat-value">${Number(stats.population).toLocaleString()}</span>
+                            <span class="stat-desc">Estimated residents</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label"><i data-lucide="map" style="width:12px; height:12px;"></i> Area</span>
+                            <span class="stat-value">${stats.area_sq_mi} <small style="font-size:11px; font-weight:500;">sq mi</small></span>
+                            <span class="stat-desc">District size</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label"><i data-lucide="heart-handshake" style="width:12px; height:12px;"></i> Civic Score</span>
+                            <span class="stat-value">${stats.civic_score} <small style="font-size:11px; font-weight:500;">/ 100</small></span>
+                            <span class="stat-desc">Engagement index</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label"><i data-lucide="car" style="width:12px; height:12px;"></i> Car Access</span>
+                            <span class="stat-value">${stats.car_ownership_pct}%</span>
+                            <span class="stat-desc">Households with cars</span>
+                        </div>
+                    </div>
+                `;
+            }
+
             let groupsHtml = '<div class="no-data-msg">No community groups registered in this area yet.</div>';
             if (groups && groups.length > 0) {
                 groupsHtml = groups.map(g => `
@@ -80,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <p class="entity-desc">${escapeHtml(g.description)}</p>
                         <div class="entity-actions">
-                            ${g.website ? `<a href="${escapeHtml(g.website)}" target="_blank" class="entity-link"><i data-lucide="external-link"></i><span>Website</span></a>` : ''}
+                            ${g.website ? `<a href="${escapeHtml(g.website)}" target="_blank" rel="noopener noreferrer" class="entity-link"><i data-lucide="external-link"></i><span>Website</span></a>` : ''}
                             ${g.contact_email ? `<a href="mailto:${escapeHtml(g.contact_email)}" class="entity-link"><i data-lucide="mail"></i><span>Email</span></a>` : ''}
                         </div>
                     </div>
@@ -99,6 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${isLocked ? `<p style="font-size:11px; margin-top:8px; color: var(--accent); cursor: pointer; font-weight: 600;" id="unlock-btn"><i data-lucide="lock" style="width:12px; height:12px; display:inline; vertical-align:middle; margin-right:4px;"></i>Locked view. Click here to unlock</p>` : ''}
                 </div>
 
+                ${statsHtml}
+
                 <div class="entity-list-section">
                     <h4>Community Groups (${groups ? groups.length : 0})</h4>
                     ${groupsHtml}
@@ -110,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         entityDetail: (title, category, addressInfo, description, website, logoFilename, additionalItems = []) => {
             const hasLogo = !!logoFilename;
             const logoUrl = hasLogo ? `assets/logos/${logoFilename}` : '';
-            
+
             let fallbackIcon = 'heart-handshake';
             let fallbackStyle = '';
             if (category.toLowerCase().includes('library')) {
@@ -159,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="marker-desc">${escapeHtml(description)}</p>
                     
                     ${website ? `
-                        <a href="${escapeHtml(website)}" target="_blank" class="marker-btn">
+                        <a href="${escapeHtml(website)}" target="_blank" rel="noopener noreferrer" class="marker-btn">
                             <i data-lucide="external-link"></i>
                             <span>Visit Website</span>
                         </a>
@@ -172,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Helper Functions ---
     function escapeHtml(str) {
         if (!str) return '';
-        return str
+        return String(str)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -190,19 +212,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Data loading & initialization ---
     async function loadData() {
         console.log("Loading datasets...");
-        
+
         try {
-            // Load GeoJSON
-            const geojsonRes = await fetch('data/sf_neighborhoods.geojson');
-            state.geojsonData = await geojsonRes.json();
-            
-            // Assign custom numeric IDs to each feature dynamically for MapLibre setFeatureState
-            state.geojsonData.features.forEach((feature, index) => {
-                feature.id = index;
-            });
-            console.log("GeoJSON loaded successfully!");
-            
-            // Helper to parse local CSV sheets
+            // Helper to parse local CSV sheets via PapaParse
             const parseCSV = (filepath) => {
                 return new Promise((resolve, reject) => {
                     Papa.parse(filepath, {
@@ -236,16 +248,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Index stats: { "Mission": stats_record, ... }
             statsRaw.forEach(row => {
-                state.statsData[row.neighborhood] = row;
+                if (row.neighborhood) {
+                    state.statsData[row.neighborhood.trim()] = row;
+                }
             });
 
             // Group community groups by neighborhood
             groupsRaw.forEach(row => {
-                const nh = row.neighborhood;
-                if (!state.groupsData[nh]) {
-                    state.groupsData[nh] = [];
+                if (row.neighborhood) {
+                    const nh = row.neighborhood.trim();
+                    if (!state.groupsData[nh]) {
+                        state.groupsData[nh] = [];
+                    }
+                    state.groupsData[nh].push(row);
                 }
-                state.groupsData[nh].push(row);
             });
 
             state.librariesData = librariesRaw;
@@ -256,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             console.log("All local CSV data parsed successfully!");
             initializeMap();
-            
+
         } catch (error) {
             console.error("Error loading application data:", error);
             document.getElementById('details-content').innerHTML = `
@@ -265,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <i data-lucide="alert-triangle"></i>
                     </div>
                     <h3>Error Loading Data</h3>
-                    <p>We encountered an issue downloading the local map configurations and database tables.</p>
+                    <p>We encountered an issue downloading the local database tables.</p>
                     <p class="welcome-hint">Please check that the local server is running and the data folder contains the correct CSV assets.</p>
                 </div>
             `;
@@ -275,112 +291,106 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Map Initialization ---
     function initializeMap() {
-        console.log("Initializing MapLibre GL Map...");
-        
+        console.log("Initializing Mapbox GL Map...");
+
+        mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+
         // Custom popup instance
-        state.popup = new maplibregl.Popup({
+        state.popup = new mapboxgl.Popup({
             closeButton: false,
             closeOnClick: false,
             offset: 15
         });
 
-        // Initialize MapLibre Map
-        state.map = new maplibregl.Map({
+        // Initialize Mapbox Map
+        state.map = new mapboxgl.Map({
             container: 'map',
-            style: basemaps[state.theme],
+            style: MAPBOX_STYLE_URL,
             center: [-122.44, 37.76], // Centered on SF
-            zoom: 11.8,
+            zoom: 11.6,
             minZoom: 10,
-            maxZoom: 16
+            maxZoom: 18
         });
 
         // Add standard navigation zoom controls in top-left
-        state.map.addControl(new maplibregl.NavigationControl({
+        state.map.addControl(new mapboxgl.NavigationControl({
             showCompass: false
         }), 'top-left');
 
         // Setup Map event listeners
         state.map.on('load', () => {
-            console.log("Basemap loaded.");
-            setupMapLayers();
+            console.log("Mapbox style loaded.");
+            identifyNeighborhoodLayer();
             setupInteractiveEvents();
             refreshSidebar();
         });
     }
 
-    // --- Configure Vector Sources & Layers ---
-    function setupMapLayers() {
-        const map = state.map;
-        const themeColors = colors[state.theme];
-
-        // Add GeoJSON neighborhood boundaries source
-        map.addSource('sf-neighborhoods', {
-            type: 'geojson',
-            data: state.geojsonData
-        });
-
-        // 1. Fill Layer
-        map.addLayer({
-            id: 'neighborhood-fills',
-            type: 'fill',
-            source: 'sf-neighborhoods',
-            layout: {},
-            paint: {
-                'fill-color': themeColors.fillDefault,
-                'fill-opacity': [
-                    'case',
-                    ['boolean', ['feature-state', 'hover'], false],
-                    themeColors.fillOpacityHover,
-                    themeColors.fillOpacityDefault
-                ]
-            }
-        });
-
-        // 2. Borders Line Layer
-        map.addLayer({
-            id: 'neighborhood-borders',
-            type: 'line',
-            source: 'sf-neighborhoods',
-            layout: {},
-            paint: {
-                'line-color': themeColors.borderDefault,
-                'line-width': themeColors.borderWidth,
-                'line-opacity': themeColors.borderOpacity
-            }
-        });
+    // Detect the neighborhood fill layer ID from the Mapbox style
+    function identifyNeighborhoodLayer() {
+        const layers = state.map.getStyle().layers || [];
+        const found = layers.find(l =>
+            l.id === state.neighborhoodLayerId ||
+            l['source-layer'] === '8103bc36377890461547' ||
+            (l.type === 'fill' && l.source && l.source.includes('fcjm9r9etz94'))
+        );
+        if (found) {
+            state.neighborhoodLayerId = found.id;
+            console.log("Neighborhood layer confirmed:", state.neighborhoodLayerId);
+        }
     }
 
-    // --- Setup Interactive Polygon Events ---
+    // --- Setup Interactive Polygon Events for Vector Neighborhood Layer ---
     function setupInteractiveEvents() {
         const map = state.map;
+        const layerId = state.neighborhoodLayerId;
 
         // Hover highlighting & instant sidebar loading
-        map.on('mousemove', 'neighborhood-fills', (e) => {
+        map.on('mousemove', layerId, (e) => {
             if (state.activeLayer !== 'neighborhoods') return;
-            
-            if (e.features.length > 0) {
+            console.log("Active layer n confirmed");
+
+            if (e.features && e.features.length > 0) {
                 map.getCanvas().style.cursor = 'pointer';
                 const feature = e.features[0];
-                const featureId = feature.id;
-                const nhName = feature.properties.name;
+                const nhName = feature.properties && (feature.properties.name || feature.properties.NAME || feature.properties.nhood);
+
+                if (!nhName) return;
+
+                const featureKey = feature.id !== undefined ? feature.id : nhName;
 
                 // Only trigger update if we change features to avoid redundant DOM updates
-                if (state.hoveredFeatureId !== featureId) {
+                if (!state.hoveredFeature || state.hoveredFeature.key !== featureKey) {
                     // Reset previous hover state
-                    if (state.hoveredFeatureId !== null) {
-                        map.setFeatureState(
-                            { source: 'sf-neighborhoods', id: state.hoveredFeatureId },
-                            { hover: false }
-                        );
+                    if (state.hoveredFeature && state.hoveredFeature.id !== undefined) {
+                        try {
+                            map.setFeatureState(
+                                { source: state.hoveredFeature.source, sourceLayer: state.hoveredFeature.sourceLayer, id: state.hoveredFeature.id },
+                                { state: false, hover: false }
+                            );
+                        } catch (err) {
+                            // ignore if featureState not supported on source
+                        }
                     }
 
-                    state.hoveredFeatureId = featureId;
-                    
+                    state.hoveredFeature = {
+                        key: featureKey,
+                        id: feature.id,
+                        source: feature.source,
+                        sourceLayer: feature.sourceLayer
+                    };
+
                     // Set new hover state
-                    map.setFeatureState(
-                        { source: 'sf-neighborhoods', id: featureId },
-                        { hover: true }
-                    );
+                    if (feature.id !== undefined) {
+                        try {
+                            map.setFeatureState(
+                                { source: feature.source, sourceLayer: feature.sourceLayer, id: feature.id },
+                                { state: true, hover: true }
+                            );
+                        } catch (err) {
+                            // ignore
+                        }
+                    }
 
                     // If we haven't locked a selection, show statistics on hover
                     if (!state.lockedNeighborhood) {
@@ -390,8 +400,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Show floating popup at mouse position
                 const stats = state.statsData[nhName];
-                const statsStr = stats ? `Pop: ${Number(stats.population).toLocaleString()}` : '';
-                
+                const statsStr = stats && stats.population ? `Pop: ${Number(stats.population).toLocaleString()}` : '';
+
                 state.popup
                     .setLngLat(e.lngLat)
                     .setHTML(`
@@ -403,18 +413,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Mouse leaves neighborhood
-        map.on('mouseleave', 'neighborhood-fills', () => {
+        map.on('mouseleave', layerId, () => {
             if (state.activeLayer !== 'neighborhoods') return;
-            
+
             map.getCanvas().style.cursor = '';
             state.popup.remove();
 
-            if (state.hoveredFeatureId !== null) {
-                map.setFeatureState(
-                    { source: 'sf-neighborhoods', id: state.hoveredFeatureId },
-                    { hover: false }
-                );
-                state.hoveredFeatureId = null;
+            if (state.hoveredFeature && state.hoveredFeature.id !== undefined) {
+                try {
+                    map.setFeatureState(
+                        { source: state.hoveredFeature.source, sourceLayer: state.hoveredFeature.sourceLayer, id: state.hoveredFeature.id },
+                        { state: false, hover: false }
+                    );
+                } catch (err) {
+                    // ignore
+                }
+                state.hoveredFeature = null;
             }
 
             // Restore the locked neighborhood details, or show welcome card
@@ -428,12 +442,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Click to Lock/Unlock sidebar view
-        map.on('click', 'neighborhood-fills', (e) => {
+        map.on('click', layerId, (e) => {
             if (state.activeLayer !== 'neighborhoods') return;
-            
-            if (e.features.length > 0) {
-                const nhName = e.features[0].properties.name;
-                
+
+            if (e.features && e.features.length > 0) {
+                const nhName = e.features[0].properties && (e.features[0].properties.name || e.features[0].properties.NAME || e.features[0].properties.nhood);
+                if (!nhName) return;
+
                 // If it's already locked, clicking it again unlocks it
                 if (state.lockedNeighborhood === nhName) {
                     state.lockedNeighborhood = null;
@@ -451,7 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const stats = state.statsData[name];
         const groups = state.groupsData[name];
         const detailsContainer = document.getElementById('details-content');
-        
+
         detailsContainer.innerHTML = templates.neighborhood(name, stats, groups);
         refreshIcons();
 
@@ -472,15 +487,15 @@ document.addEventListener('DOMContentLoaded', () => {
         state.activeLayer = layerId;
 
         console.log(`Switching map view to: ${layerId}`);
-        
+
         // Remove locked elements
         state.lockedNeighborhood = null;
-        state.hoveredFeatureId = null;
-        
+        state.hoveredFeature = null;
+
         // Update sidebar titles
         const layerBadge = document.getElementById('layer-badge');
         const sidebarTitle = document.getElementById('sidebar-title');
-        
+
         // Format names nicely
         const titlesMapping = {
             neighborhoods: 'Neighborhoods Layer',
@@ -490,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
             award_winners: 'Good Neighbor Award Winners',
             events: 'Events Layer'
         };
-        
+
         sidebarTitle.textContent = titlesMapping[layerId] || 'Map Layer';
         layerBadge.textContent = 'Active';
 
@@ -499,26 +514,23 @@ document.addEventListener('DOMContentLoaded', () => {
         state.popup.remove();
 
         const map = state.map;
+        const nhLayerId = state.neighborhoodLayerId;
 
         if (layerId === 'neighborhoods') {
-            // Re-apply standard polygon coloring
-            const themeColors = colors[state.theme];
-            map.setPaintProperty('neighborhood-fills', 'fill-opacity', [
-                'case',
-                ['boolean', ['feature-state', 'hover'], false],
-                themeColors.fillOpacityHover,
-                themeColors.fillOpacityDefault
-            ]);
-            map.setPaintProperty('neighborhood-borders', 'line-opacity', themeColors.borderOpacity);
-            
+            // Re-apply standard polygon opacity
+            if (map.getLayer(nhLayerId)) {
+                map.setPaintProperty(nhLayerId, 'fill-opacity', 0.8);
+            }
+
             // Restore welcome sidebar
             document.getElementById('details-content').innerHTML = templates.welcome();
             refreshIcons();
         } else {
-            // Turn down neighborhood opacity extremely low so it works as a baseline skeleton context
-            map.setPaintProperty('neighborhood-fills', 'fill-opacity', 0.02);
-            map.setPaintProperty('neighborhood-borders', 'line-opacity', 0.15);
-            
+            // Turn down neighborhood fill opacity so it works as subtle skeleton context
+            if (map.getLayer(nhLayerId)) {
+                map.setPaintProperty(nhLayerId, 'fill-opacity', 0.15);
+            }
+
             // Build markers corresponding to active layer
             renderLayerMarkers(layerId);
         }
@@ -531,7 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.activeMarkerEl = null;
     }
 
-    // --- Render Custom Dynamic Markers for Markers Layers ---
+    // --- Render Custom Dynamic Markers for Point Layers ---
     function renderLayerMarkers(layerId) {
         let dataset = [];
         let renderFn = null;
@@ -555,7 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Show welcome layer description in sidebar
         const detailsContainer = document.getElementById('details-content');
-        
+
         const welcomeLayerText = {
             libraries: 'Select a library branch pin on the map to view address details and location resources.',
             civic_orgs: 'Select a civic/volunteer organization pin on the map to explore volunteer channels and organization info.',
@@ -587,7 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dataset.forEach(row => {
             const lat = parseFloat(row.latitude);
             const lng = parseFloat(row.longitude);
-            
+
             if (isNaN(lat) || isNaN(lng)) return;
 
             renderFn(row, [lng, lat]);
@@ -604,7 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        const marker = new maplibregl.Marker({ element: el })
+        const marker = new mapboxgl.Marker({ element: el })
             .setLngLat(coordinates)
             .addTo(state.map);
 
@@ -614,11 +626,11 @@ document.addEventListener('DOMContentLoaded', () => {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             highlightMarker(el);
-            
+
             const additional = [
                 { icon: 'info', label: 'Library System', value: 'San Francisco Public Library (SFPL)' }
             ];
-            
+
             const sidebarHtml = templates.entityDetail(
                 row.name,
                 "San Francisco Public Library",
@@ -628,10 +640,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 "",
                 additional
             );
-            
+
             document.getElementById('details-content').innerHTML = sidebarHtml;
             refreshIcons();
-            
+
             // Fly to marker center smoothly
             state.map.easeTo({ center: coordinates, zoom: 13.5 });
         });
@@ -647,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        const marker = new maplibregl.Marker({ element: el })
+        const marker = new mapboxgl.Marker({ element: el })
             .setLngLat(coordinates)
             .addTo(state.map);
 
@@ -656,11 +668,11 @@ document.addEventListener('DOMContentLoaded', () => {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             highlightMarker(el);
-            
+
             const additional = [
                 { icon: 'tag', label: 'Activity Focus', value: row.category }
             ];
-            
+
             const sidebarHtml = templates.entityDetail(
                 row.name,
                 "Civic & Volunteer Organization",
@@ -670,7 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.logo_filename,
                 additional
             );
-            
+
             document.getElementById('details-content').innerHTML = sidebarHtml;
             refreshIcons();
             state.map.easeTo({ center: coordinates, zoom: 13.5 });
@@ -687,7 +699,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        const marker = new maplibregl.Marker({ element: el })
+        const marker = new mapboxgl.Marker({ element: el })
             .setLngLat(coordinates)
             .addTo(state.map);
 
@@ -696,11 +708,11 @@ document.addEventListener('DOMContentLoaded', () => {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             highlightMarker(el);
-            
+
             const additional = [
                 { icon: 'map', label: 'Coverage Area', value: row.neighborhood }
             ];
-            
+
             const sidebarHtml = templates.entityDetail(
                 row.name,
                 "Local Newsroom / Independent Media",
@@ -710,7 +722,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.logo_filename,
                 additional
             );
-            
+
             document.getElementById('details-content').innerHTML = sidebarHtml;
             refreshIcons();
             state.map.easeTo({ center: coordinates, zoom: 13.5 });
@@ -727,7 +739,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        const marker = new maplibregl.Marker({ element: el })
+        const marker = new mapboxgl.Marker({ element: el })
             .setLngLat(coordinates)
             .addTo(state.map);
 
@@ -736,12 +748,12 @@ document.addEventListener('DOMContentLoaded', () => {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             highlightMarker(el);
-            
+
             const additional = [
                 { icon: 'shield-alert', label: 'Award Focus', value: row.award_category },
                 { icon: 'heart', label: 'Home District', value: row.neighborhood }
             ];
-            
+
             const sidebarHtml = templates.entityDetail(
                 row.name,
                 "SF Good Neighbor Award Winner",
@@ -751,7 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 "",
                 additional
             );
-            
+
             document.getElementById('details-content').innerHTML = sidebarHtml;
             refreshIcons();
             state.map.easeTo({ center: coordinates, zoom: 13.5 });
@@ -768,7 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        const marker = new maplibregl.Marker({ element: el })
+        const marker = new mapboxgl.Marker({ element: el })
             .setLngLat(coordinates)
             .addTo(state.map);
 
@@ -777,12 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             highlightMarker(el);
-            
-            const additional = [
-                { icon: 'calendar', label: 'Scheduled Date', value: row.date },
-                { icon: 'clock', label: 'Event Hours', value: row.time }
-            ];
-            
+
             // Build custom markup for sidebar with Date Badge
             const detailContainer = document.getElementById('details-content');
             detailContainer.innerHTML = `
@@ -807,14 +814,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="marker-desc">${escapeHtml(row.description)}</p>
                     
                     ${row.website ? `
-                        <a href="${escapeHtml(row.website)}" target="_blank" class="marker-btn" style="background-color:#a21caf; box-shadow: 0 4px 12px rgba(162,28,175,0.25);">
+                        <a href="${escapeHtml(row.website)}" target="_blank" rel="noopener noreferrer" class="marker-btn" style="background-color:#a21caf; box-shadow: 0 4px 12px rgba(162,28,175,0.25);">
                             <i data-lucide="ticket"></i>
                             <span>Sign Up / Details</span>
                         </a>
                     ` : ''}
                 </div>
             `;
-            
+
             refreshIcons();
             state.map.easeTo({ center: coordinates, zoom: 13.5 });
         });
@@ -836,44 +843,8 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshIcons();
     }
 
-    // --- Theme Switcher Logic ---
-    function toggleTheme() {
-        const newTheme = state.theme === 'light' ? 'dark' : 'light';
-        state.theme = newTheme;
-        
-        // Update DOM attributes
-        document.documentElement.setAttribute('data-theme', newTheme);
-        
-        console.log(`Setting application theme to: ${newTheme}`);
-
-        // Update MapLibre style JSON seamlessly
-        if (state.map) {
-            state.map.setStyle(basemaps[newTheme]);
-            
-            // Re-configure sources & layers upon basemap style load
-            state.map.once('style.load', () => {
-                console.log("Vector basemap style applied.");
-                setupMapLayers();
-                
-                // If we aren't on neighborhoods layer, make layer faintly visible & redraw active layer markers
-                if (state.activeLayer !== 'neighborhoods') {
-                    state.map.setPaintProperty('neighborhood-fills', 'fill-opacity', 0.02);
-                    state.map.setPaintProperty('neighborhood-borders', 'line-opacity', 0.15);
-                    
-                    // Re-render markers (to ensure pins are redrawn with proper theme contexts)
-                    clearMarkers();
-                    renderLayerMarkers(state.activeLayer);
-                }
-            });
-        }
-    }
-
     // --- UI Listeners Binding ---
     function bindUIEvents() {
-        // Theme switch click
-        const themeBtn = document.getElementById('theme-toggle');
-        themeBtn.addEventListener('click', toggleTheme);
-
         // About modal trigger
         const aboutBtn = document.getElementById('about-btn');
         const modal = document.getElementById('about-modal');
@@ -898,13 +869,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Dynamic layer switches binding
         const layerButtons = document.querySelectorAll('.layer-btn');
         layerButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', () => {
                 const targetLayer = btn.getAttribute('data-layer');
-                
+
                 // Update active buttons styles
                 layerButtons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                
+
                 // Orchestrate layer change
                 switchLayer(targetLayer);
             });
