@@ -19,7 +19,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap"
         rel="stylesheet">
 
     <!-- Mapbox GL JS CSS -->
@@ -31,28 +31,28 @@
 
 <body>
     <div class="app-container">
-        <!-- Modern Premium Header -->
-        <header class="app-header">
-            <div class="header-left">
-                <div class="logo-container">
-                    <span class="logo-icon"><i data-lucide="heart-handshake"></i></span>
-                    <div class="logo-text">
-                        <span class="logo-title">Good Neighbor Lab</span>
-                        <span class="logo-badge">2026 SF Map Project</span>
+        <!-- Good Neighbor Lab Site Header -->
+        <header class="site-header">
+            <a href="https://www.goodneighborlab.org" class="site-logo" target="_blank" rel="noopener">
+                <img src="assets/logo.png" alt="Good Neighbor Lab">
+            </a>
+
+            <nav class="site-nav">
+                <a href="https://www.goodneighborlab.org/what-we-do" target="_blank" rel="noopener">What We Do</a>
+                <a href="https://www.goodneighborlab.org/how-we-do-it" target="_blank" rel="noopener">How we do it</a>
+                <a href="https://www.goodneighborlab.org/volunteer" target="_blank" rel="noopener">Volunteer</a>
+                <a href="https://www.goodneighborlab.org/donate" target="_blank" rel="noopener">Donate</a>
+                <div class="site-nav-dropdown">
+                    <button class="site-nav-dropdown-toggle">About</button>
+                    <div class="site-nav-dropdown-menu">
+                        <a href="https://www.goodneighborlab.org/about-us" target="_blank" rel="noopener">About Us</a>
+                        <a href="https://www.goodneighborlab.org/our-partners" target="_blank" rel="noopener">Our
+                            partners</a>
+                        <a href="https://www.goodneighborlab.org/press" target="_blank" rel="noopener">Press</a>
+                        <a href="https://www.goodneighborlab.org/blog" target="_blank" rel="noopener">Blog</a>
                     </div>
                 </div>
-                <div class="title-container">
-                    <h1>SF Good Neighbor Week Map</h1>
-                    <p class="subtitle">Connecting our community, neighborhood by neighborhood, block by block.</p>
-                </div>
-            </div>
-
-            <div class="header-right">
-                <button id="about-btn" class="btn-primary">
-                    <i data-lucide="info"></i>
-                    <span>About</span>
-                </button>
-            </div>
+            </nav>
         </header>
 
         <!-- Main Dashboard Layout -->
@@ -117,46 +117,6 @@
                 </div>
             </aside>
         </main>
-
-        <!-- About Modal (Glassmorphic Backdrop Overlay) -->
-        <div id="about-modal" class="modal-overlay hidden">
-            <div class="modal-card">
-                <button id="modal-close" class="modal-close-btn" aria-label="Close modal">
-                    <i data-lucide="x"></i>
-                </button>
-                <div class="modal-header">
-                    <div class="modal-icon"><i data-lucide="heart-handshake"></i></div>
-                    <h2>2026 SF Good Neighbor Week</h2>
-                </div>
-                <div class="modal-body">
-                    <p>Good Neighbor Week is an annual San Francisco campaign dedicated to fostering community
-                        connection, greening our blocks, and amplifying hyper-local support networks.</p>
-
-                    <h3>About the Map Project</h3>
-                    <p>This multi-layered interactive dashboard was created by the <strong>Good Neighbor Lab</strong> to
-                        catalog and share community infrastructure. It acts as an easy-to-use guide for residents
-                        looking to connect with neighborhood associations, local newsrooms, public library branches, and
-                        active volunteer organizations.</p>
-
-                    <p>Inspired by the work of Cartographer <strong>Stephen Braitsch</strong>, the map is designed for
-                        seamless navigation and rapid neighborhood exploration.</p>
-
-                    <h3>Technical Stack</h3>
-                    <ul>
-                        <li><strong>Map Engine:</strong> Mapbox GL JS (GPU-accelerated vector mapping)</li>
-                        <li><strong>Basemaps & Boundaries:</strong> Mapbox Studio Style with integrated SF Find
-                            Neighborhoods vector data</li>
-                        <li><strong>Data Sources:</strong> SF OpenData (SF Find Neighborhoods), local community CSV
-                            datasets, and OpenStreetMap.</li>
-                        <li><strong>Iconography:</strong> Lucide Icons</li>
-                    </ul>
-
-                    <div class="modal-footer">
-                        <p>Drafted by Julia Gitis, Good Neighbor Lab &copy; 2026</p>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Third-Party Libraries -->

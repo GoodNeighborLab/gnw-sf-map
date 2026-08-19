@@ -845,27 +845,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- UI Listeners Binding ---
     function bindUIEvents() {
-        // About modal trigger
-        const aboutBtn = document.getElementById('about-btn');
-        const modal = document.getElementById('about-modal');
-        const modalClose = document.getElementById('modal-close');
-
-        aboutBtn.addEventListener('click', () => {
-            modal.classList.remove('hidden');
-            refreshIcons();
-        });
-
-        modalClose.addEventListener('click', () => {
-            modal.classList.add('hidden');
-        });
-
-        // Close modal on background click
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
-            }
-        });
-
         // Dynamic layer switches binding
         const layerButtons = document.querySelectorAll('.layer-btn');
         layerButtons.forEach(btn => {
