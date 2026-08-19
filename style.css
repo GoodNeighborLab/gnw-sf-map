@@ -12,6 +12,7 @@
     /* Good Neighbor Lab brand colors (from goodneighborlab.org) */
     --gnl-navy: rgb(34, 65, 138);
     --gnl-accent: hsl(16, 87%, 56%);
+    --gnl-blue: rgb(42, 185, 238);
 
     /* Header height: fixed on desktop, fluid on mobile (matches goodneighborlab.org's own formula) */
     --header-height: 81px;
@@ -70,6 +71,10 @@ body {
     transition: background-color var(--transition-normal) var(--ease-out-cubic);
 }
 
+body.mobile-nav-locked {
+    overflow: hidden;
+}
+
 h1, h2, h3, h4 {
     font-family: var(--font-heading);
     font-weight: 700;
@@ -112,7 +117,7 @@ button {
     align-items: center;
     gap: 24px;
     padding: 0 32px;
-    z-index: 10;
+    z-index: 210;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.01);
     transition: background-color var(--transition-normal) var(--ease-out-cubic), border-color var(--transition-normal) var(--ease-out-cubic);
 }
@@ -205,6 +210,106 @@ button {
 .site-nav-dropdown-menu a:hover {
     color: var(--gnl-navy);
     text-decoration: none;
+}
+
+/* --- Mobile Hamburger Menu (hidden until <=799px, see media query) --- */
+.mobile-menu-toggle {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 10px;
+    width: 35px;
+    height: 35px;
+    flex-shrink: 0;
+    background: none;
+    padding: 0;
+}
+
+.mobile-menu-toggle-bar {
+    width: 100%;
+    height: 1px;
+    background-color: var(--gnl-navy);
+    transform-origin: center;
+    transition: transform var(--transition-fast) ease, opacity var(--transition-fast) ease;
+}
+
+.mobile-menu-toggle.open .mobile-menu-toggle-bar:first-child {
+    transform: translateY(5.5px) rotate(45deg);
+}
+
+.mobile-menu-toggle.open .mobile-menu-toggle-bar:last-child {
+    transform: translateY(-5.5px) rotate(-45deg);
+}
+
+.mobile-nav-overlay {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22.5px;
+    background-color: var(--gnl-blue);
+    overflow-y: auto;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast) ease, visibility var(--transition-fast);
+}
+
+.mobile-nav-overlay.open {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.mobile-nav-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22.5px;
+}
+
+.mobile-nav-list>a,
+.mobile-nav-dropdown-toggle,
+.mobile-nav-dropdown-menu a {
+    background: none;
+    font-family: var(--font-nav);
+    font-weight: 400;
+    font-size: clamp(27px, 8vw, 42px);
+    color: var(--gnl-accent);
+    text-align: center;
+    line-height: 1;
+}
+
+.mobile-nav-list>a:hover,
+.mobile-nav-dropdown-toggle:hover,
+.mobile-nav-dropdown-menu a:hover {
+    color: var(--gnl-accent);
+    text-decoration: none;
+}
+
+.mobile-nav-dropdown {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22.5px;
+}
+
+.mobile-nav-dropdown-menu {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 22.5px;
+}
+
+.mobile-nav-dropdown.open .mobile-nav-dropdown-menu {
+    display: flex;
 }
 
 /* --- Dashboard Container --- */
@@ -865,9 +970,12 @@ button {
         height: 30px;
     }
 
-    .site-nav>a,
-    .site-nav-dropdown {
+    .site-nav {
         display: none;
+    }
+
+    .mobile-menu-toggle {
+        display: flex;
     }
 
     .layer-control-panel {

@@ -845,6 +845,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- UI Listeners Binding ---
     function bindUIEvents() {
+        // Mobile hamburger menu toggle
+        const menuToggle = document.getElementById('mobile-menu-toggle');
+        const mobileOverlay = document.getElementById('mobile-nav-overlay');
+
+        const closeMobileMenu = () => {
+            menuToggle.classList.remove('open');
+            mobileOverlay.classList.remove('open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+            document.body.classList.remove('mobile-nav-locked');
+        };
+
+        menuToggle.addEventListener('click', () => {
+            const isOpen = menuToggle.classList.toggle('open');
+            mobileOverlay.classList.toggle('open', isOpen);
+            menuToggle.setAttribute('aria-expanded', String(isOpen));
+            document.body.classList.toggle('mobile-nav-locked', isOpen);
+        });
+
+        mobileOverlay.querySelectorAll('a').forEach(a => {
+            a.addEventListener('click', closeMobileMenu);
+        });
+
+        // About accordion within the mobile menu
+        const mobileDropdown = mobileOverlay.querySelector('.mobile-nav-dropdown');
+        const mobileDropdownToggle = mobileOverlay.querySelector('.mobile-nav-dropdown-toggle');
+        mobileDropdownToggle.addEventListener('click', () => {
+            const isOpen = mobileDropdown.classList.toggle('open');
+            mobileDropdownToggle.setAttribute('aria-expanded', String(isOpen));
+        });
+
         // Dynamic layer switches binding
         const layerButtons = document.querySelectorAll('.layer-btn');
         layerButtons.forEach(btn => {
