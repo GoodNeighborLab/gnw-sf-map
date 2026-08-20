@@ -15,7 +15,7 @@
     --gnl-blue: rgb(42, 185, 238);
 
     /* Header height: fixed on desktop, fluid on mobile (matches goodneighborlab.org's own formula) */
-    --header-height: 81px;
+    --header-height: 84.5px;
 
     /* HSL Tailored Palettes - Light Mode (Default) */
     --bg-primary: #f8fafc;
@@ -109,14 +109,12 @@ button {
 
 /* Header Styles */
 .site-header {
-    height: var(--header-height);
     background-color: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 24px;
-    padding: 0 32px;
+    padding: .6vw 2vw;
     z-index: 210;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.01);
     transition: background-color var(--transition-normal) var(--ease-out-cubic), border-color var(--transition-normal) var(--ease-out-cubic);
@@ -139,7 +137,7 @@ button {
     align-items: center;
     justify-content: flex-end;
     flex: 1;
-    gap: 47.5px;
+    gap: 3.3vw;
     font-family: var(--font-nav);
 }
 
@@ -895,57 +893,8 @@ button {
 
 /* --- Responsive Adaptations --- */
 @media (max-width: 1024px) {
-    .site-header {
-        padding: 0 24px;
-        gap: 16px;
-    }
-    .site-nav {
-        gap: 20px;
-    }
     .sidebar-container {
         width: 380px;
-    }
-}
-
-@media (max-width: 900px) {
-    body {
-        overflow: auto;
-    }
-
-    .app-container {
-        height: auto;
-        min-height: 100vh;
-    }
-
-    .dashboard-container {
-        flex-direction: column;
-        height: auto;
-        min-height: calc(100vh - var(--header-height));
-    }
-
-    .map-container-wrapper {
-        height: 50vh;
-        min-height: 400px;
-        width: 100%;
-    }
-
-    .sidebar-container {
-        width: 100%;
-        border-left: none;
-        border-top: 1px solid var(--border-color);
-        height: auto;
-        min-height: 40vh;
-        box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.02);
-    }
-
-    .layer-control-panel {
-        bottom: 16px;
-        padding: 8px 12px;
-    }
-
-    .layer-btn {
-        padding: 8px 12px;
-        font-size: 12px;
     }
 }
 
@@ -954,16 +903,12 @@ button {
    fluid: 37px + 12vw — matches their site's own formula almost exactly). */
 @media (max-width: 799px) {
     :root {
-        --header-height: calc(37px + 12vw);
+        --header-height: calc(64px + 12vw);
     }
 
     .site-header {
-        padding: 0 16px;
+        padding: 6vw;
         gap: 12px;
-    }
-
-    .site-logo img {
-        height: 30px;
     }
 
     .site-nav {
@@ -989,5 +934,15 @@ button {
 
     .layer-btn {
         padding: 10px;
+    }
+}
+
+@media (max-width: 767px) {
+    :root {
+        --header-height: calc(30px + 12vw);
+    }
+
+    .site-logo img {
+        height: 30px;
     }
 }
