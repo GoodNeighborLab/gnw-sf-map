@@ -845,25 +845,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- UI Listeners Binding ---
     function bindUIEvents() {
-        // About modal trigger
-        const aboutBtn = document.getElementById('about-btn');
-        const modal = document.getElementById('about-modal');
-        const modalClose = document.getElementById('modal-close');
+        // Mobile hamburger menu toggle
+        const menuToggle = document.getElementById('mobile-menu-toggle');
+        const mobileOverlay = document.getElementById('mobile-nav-overlay');
+        const mobileNavTrack = document.getElementById('mobile-nav-track');
+        const folderToggle = mobileOverlay.querySelector('.mobile-nav-folder-toggle');
+        const backButton = mobileOverlay.querySelector('.mobile-nav-back');
 
-        aboutBtn.addEventListener('click', () => {
-            modal.classList.remove('hidden');
-            refreshIcons();
-        });
+        const closeMobileMenu = () => {
+            menuToggle.classList.remove('open');
+            mobileOverlay.classList.remove('open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+            document.body.classList.remove('mobile-nav-locked');
+            // Reset to the main panel so the menu always reopens fresh
+            mobileNavTrack.classList.remove('show-about');
+            folderToggle.setAttribute('aria-expanded', 'false');
+        };
 
-        modalClose.addEventListener('click', () => {
-            modal.classList.add('hidden');
-        });
-
-        // Close modal on background click
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
+        menuToggle.addEventListener('click', () => {
+            const isOpen = menuToggle.classList.toggle('open');
+            mobileOverlay.classList.toggle('open', isOpen);
+            menuToggle.setAttribute('aria-expanded', String(isOpen));
+            document.body.classList.toggle('mobile-nav-locked', isOpen);
+            if (!isOpen) {
+                mobileNavTrack.classList.remove('show-about');
+                folderToggle.setAttribute('aria-expanded', 'false');
             }
+        });
+
+        mobileOverlay.querySelectorAll('a').forEach(a => {
+            a.addEventListener('click', closeMobileMenu);
+        });
+
+        // Sliding "Back" navigation into the About submenu panel
+        folderToggle.addEventListener('click', () => {
+            mobileNavTrack.classList.add('show-about');
+            folderToggle.setAttribute('aria-expanded', 'true');
+        });
+
+        backButton.addEventListener('click', () => {
+            mobileNavTrack.classList.remove('show-about');
+            folderToggle.setAttribute('aria-expanded', 'false');
         });
 
         // Dynamic layer switches binding
