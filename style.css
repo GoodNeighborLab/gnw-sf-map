@@ -249,13 +249,8 @@ button {
     right: 0;
     bottom: 0;
     z-index: 200;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 22.5px;
+    overflow: hidden;
     background-color: var(--gnl-blue);
-    overflow-y: auto;
     visibility: hidden;
     opacity: 0;
     pointer-events: none;
@@ -268,16 +263,35 @@ button {
     pointer-events: auto;
 }
 
-.mobile-nav-list {
+/* Two full-width panels side by side; sliding to the About panel is a
+   translateX(-50%) of the track, matching goodneighborlab.org's own
+   two-panel "Back" navigation (same 0.6s cubic-bezier easing). */
+.mobile-nav-track {
+    display: flex;
+    width: 200%;
+    height: 100%;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-nav-track.show-about {
+    transform: translateX(-50%);
+}
+
+.mobile-nav-panel {
+    flex: 0 0 50%;
+    width: 50%;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 22.5px;
+    padding: 40px 24px;
+    overflow-y: auto;
 }
 
-.mobile-nav-list>a,
-.mobile-nav-dropdown-toggle,
-.mobile-nav-dropdown-menu a {
+.mobile-nav-panel>a,
+.mobile-nav-folder-toggle,
+.mobile-nav-back {
     background: none;
     font-family: var(--font-nav);
     font-weight: 400;
@@ -287,29 +301,11 @@ button {
     line-height: 1;
 }
 
-.mobile-nav-list>a:hover,
-.mobile-nav-dropdown-toggle:hover,
-.mobile-nav-dropdown-menu a:hover {
+.mobile-nav-panel>a:hover,
+.mobile-nav-folder-toggle:hover,
+.mobile-nav-back:hover {
     color: var(--gnl-accent);
     text-decoration: none;
-}
-
-.mobile-nav-dropdown {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 22.5px;
-}
-
-.mobile-nav-dropdown-menu {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    gap: 22.5px;
-}
-
-.mobile-nav-dropdown.open .mobile-nav-dropdown-menu {
-    display: flex;
 }
 
 /* --- Dashboard Container --- */

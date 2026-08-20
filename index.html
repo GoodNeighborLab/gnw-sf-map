@@ -63,24 +63,27 @@
 
         <!-- Mobile Navigation Overlay -->
         <div id="mobile-nav-overlay" class="mobile-nav-overlay">
-            <nav class="mobile-nav-list">
-                <a href="https://www.goodneighborlab.org/what-we-do" target="_blank" rel="noopener">What We Do</a>
-                <a href="https://www.goodneighborlab.org/how-we-do-it" target="_blank" rel="noopener">How we do
-                    it</a>
-                <a href="https://www.goodneighborlab.org/volunteer" target="_blank" rel="noopener">Volunteer</a>
-                <a href="https://www.goodneighborlab.org/donate" target="_blank" rel="noopener">Donate</a>
-                <div class="mobile-nav-dropdown">
-                    <button class="mobile-nav-dropdown-toggle" aria-expanded="false">About</button>
-                    <div class="mobile-nav-dropdown-menu">
-                        <a href="https://www.goodneighborlab.org/about-us" target="_blank" rel="noopener">About
-                            Us</a>
-                        <a href="https://www.goodneighborlab.org/our-partners" target="_blank" rel="noopener">Our
-                            partners</a>
-                        <a href="https://www.goodneighborlab.org/press" target="_blank" rel="noopener">Press</a>
-                        <a href="https://www.goodneighborlab.org/blog" target="_blank" rel="noopener">Blog</a>
-                    </div>
-                </div>
-            </nav>
+            <div class="mobile-nav-track" id="mobile-nav-track">
+                <nav class="mobile-nav-panel">
+                    <a href="https://www.goodneighborlab.org/what-we-do" target="_blank" rel="noopener">What We
+                        Do</a>
+                    <a href="https://www.goodneighborlab.org/how-we-do-it" target="_blank" rel="noopener">How we do
+                        it</a>
+                    <a href="https://www.goodneighborlab.org/volunteer" target="_blank" rel="noopener">Volunteer</a>
+                    <a href="https://www.goodneighborlab.org/donate" target="_blank" rel="noopener">Donate</a>
+                    <button class="mobile-nav-folder-toggle" aria-expanded="false" aria-controls="mobile-nav-about">
+                        About
+                    </button>
+                </nav>
+                <nav class="mobile-nav-panel" id="mobile-nav-about">
+                    <button class="mobile-nav-back">Back</button>
+                    <a href="https://www.goodneighborlab.org/about-us" target="_blank" rel="noopener">About Us</a>
+                    <a href="https://www.goodneighborlab.org/our-partners" target="_blank" rel="noopener">Our
+                        partners</a>
+                    <a href="https://www.goodneighborlab.org/press" target="_blank" rel="noopener">Press</a>
+                    <a href="https://www.goodneighborlab.org/blog" target="_blank" rel="noopener">Blog</a>
+                </nav>
+            </div>
         </div>
 
         <!-- Main Dashboard Layout -->
