@@ -7,12 +7,12 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
     <!-- SEO and Meta Tags -->
-    <title>Neighborhood Map — Good Neighbor Lab</title>
+    <title>Neighborhood Groups Map — Good Neighbor Lab</title>
     <meta name="description"
-        content="Explore San Francisco's neighborhood associations, public libraries, volunteer organizations, local newsrooms, award winners, and events for the 2026 SF Good Neighbor Week.">
-    <meta property="og:title" content="Neighborhood Map — Good Neighbor Lab">
+        content="Explore San Francisco's neighborhood associations, merchant alliances, and community groups on an interactive map.">
+    <meta property="og:title" content="Neighborhood Groups Map — Good Neighbor Lab">
     <meta property="og:description"
-        content="A multi-layered interactive map of San Francisco neighborhood groups, third spaces, newsrooms, and community events.">
+        content="An interactive map of San Francisco neighborhood associations, merchant alliances, and community groups.">
     <meta property="og:type" content="website">
 
     <!-- Google Fonts -->
@@ -102,44 +102,13 @@
             <!-- Left Side: Interactive Map -->
             <section class="map-container-wrapper">
                 <div id="map"></div>
-
-                <!-- Floating Glassmorphic Layer Selector -->
-                <div class="layer-control-panel">
-                    <span class="panel-label">Map Layers</span>
-                    <div class="layer-buttons">
-                        <button class="layer-btn active" data-layer="neighborhoods" id="btn-neighborhoods">
-                            <i data-lucide="map"></i>
-                            <span>Neighborhoods</span>
-                        </button>
-                        <button class="layer-btn" data-layer="libraries" id="btn-libraries">
-                            <i data-lucide="book-open"></i>
-                            <span>Libraries</span>
-                        </button>
-                        <button class="layer-btn" data-layer="civic_orgs" id="btn-civic-orgs">
-                            <i data-lucide="users"></i>
-                            <span>Civic Orgs</span>
-                        </button>
-                        <button class="layer-btn" data-layer="newsrooms" id="btn-newsrooms">
-                            <i data-lucide="newspaper"></i>
-                            <span>Newsrooms</span>
-                        </button>
-                        <button class="layer-btn" data-layer="award_winners" id="btn-award-winners">
-                            <i data-lucide="award"></i>
-                            <span>Award Winners</span>
-                        </button>
-                        <button class="layer-btn" data-layer="events" id="btn-events">
-                            <i data-lucide="calendar"></i>
-                            <span>Events</span>
-                        </button>
-                    </div>
-                </div>
             </section>
 
             <!-- Right Side: Details Side Panel -->
             <aside class="sidebar-container" id="sidebar">
                 <div class="sidebar-header">
-                    <h2 id="sidebar-title">Neighborhoods Layer</h2>
-                    <span class="sidebar-badge" id="layer-badge">Active</span>
+                    <h2 id="sidebar-title">Neighborhood Groups</h2>
+                    <span class="sidebar-badge" id="layer-badge">Explore</span>
                 </div>
 
                 <div class="sidebar-scroll-content">
@@ -150,10 +119,7 @@
                                 <i data-lucide="navigation"></i>
                             </div>
                             <h3>Explore San Francisco</h3>
-                            <p>Hover over a neighborhood polygon on the map to view instant demographics and community
-                                groups.</p>
-                            <p class="welcome-hint">Switch layers at the bottom of the map to see public libraries,
-                                local newsrooms, civic organizations, Good Neighbor Week events, and award winners.</p>
+                            <p>Hover over or click any neighborhood on the map to explore local neighborhood associations, merchant alliances, meeting times, and contact info.</p>
                         </div>
                     </div>
                 </div>
@@ -164,9 +130,6 @@
     <!-- Third-Party Libraries -->
     <!-- Mapbox GL JS -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.28.1/mapbox-gl.js"></script>
-
-    <!-- PapaParse CSV Parser -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <!-- Lucide Icon Library -->
     <script src="https://unpkg.com/lucide@latest"></script>

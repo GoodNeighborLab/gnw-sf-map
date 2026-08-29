@@ -1,6 +1,6 @@
 /* 
-   2026 SF Good Neighbor Week Map - Application Orchestrator
-   Powered by Mapbox GL JS and CSV Datasets.
+   SF Good Neighbor Map - Application Orchestrator
+   Powered by Mapbox GL JS and Neighborhood Groups Data from data/groups_data.json
 */
 
 // Basic Feature Flagging via URL
@@ -16,25 +16,19 @@ function isFeatureEnabled(flagName) {
 document.addEventListener('DOMContentLoaded', () => {
     // --- Application State ---
     const state = {
-        activeLayer: 'neighborhoods', // 'neighborhoods', 'libraries', 'civic_orgs', 'newsrooms', 'award_winners', 'events'
-        statsData: {},          // Map of neighborhood -> stats
-        groupsData: {},         // Map of neighborhood -> list of groups
-        librariesData: [],
-        civicOrgsData: [],
-        newsroomsData: [],
-        awardWinnersData: [],
-        eventsData: [],
+        allGroups: [],          // Raw array of all 132 groups from groups_data.json
+        groupsByNeighborhood: {}, // Map of normalized neighborhood -> list of groups
+        neighborhoodNames: [],  // Sorted list of unique neighborhood names
 
         // Map elements
         map: null,
         neighborhoodLayerId: '8103bc36377890461547', // Layer in Mapbox Style
-        markers: [],
         hoveredFeature: null,
         lockedNeighborhood: null, // Track clicked neighborhood to persist sidebar
-        activeMarkerEl: null,     // Track clicked marker for styling
-        popup: null
+        hoverPopup: null,
+        lockedPopup: null,
+        searchQuery: ''
     };
-
 
     // Mapbox Configuration
     const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoiaGlsZHlzZiIsImEiOiJjbXJtZGlyejAzMXBwMnduOXh2anh5b3gzIn0.wYUboFNB3ng9zkGxk_W7Xg';
@@ -46,152 +40,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     console.log('Mapbox URL Loaded', MAPBOX_STYLE_URL);
 
-    // --- Dynamic Templates for details-panel ---
-    const templates = {
-        // Welcoming card
-        welcome: () => `
-            <div class="welcome-card">
-                <div class="welcome-icon">
-                    <i data-lucide="navigation"></i>
-                </div>
-                <h3>Explore San Francisco</h3>
-                <p>Hover over or click a neighborhood polygon on the map to view instant demographics, civic engagement score, car ownership rates, and community groups.</p>
-                <p class="welcome-hint">Switch layers at the bottom of the map to see public libraries, local newsrooms, civic organizations, Good Neighbor Week events, and award winners.</p>
-            </div>
-        `,
+    // --- Normalization Helpers ---
+    function normalizeNeighborhoodName(name) {
+        if (!name) return '';
+        return String(name)
+            .trim()
+            .toLowerCase()
+            .replace(/^st\.\s+/i, 'saint ')
+            .replace(/^st\s+/i, 'saint ')
+            .replace(/['’]/g, '')
+            .replace(/\s*\/\s*/g, '/')
+            .replace(/\s+/g, ' ');
+    }
 
-        // Neighborhood detail view
-        neighborhood: (name, stats, groups) => {
-            let statsHtml = '';
-            if (stats) {
-                statsHtml = `
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <span class="stat-label"><i data-lucide="users" style="width:12px; height:12px;"></i> Population</span>
-                            <span class="stat-value">${Number(stats.population).toLocaleString()}</span>
-                            <span class="stat-desc">Estimated residents</span>
-                        </div>
-                        <div class="stat-card">
-                            <span class="stat-label"><i data-lucide="map" style="width:12px; height:12px;"></i> Area</span>
-                            <span class="stat-value">${stats.area_sq_mi} <small style="font-size:11px; font-weight:500;">sq mi</small></span>
-                            <span class="stat-desc">District size</span>
-                        </div>
-                        <div class="stat-card">
-                            <span class="stat-label"><i data-lucide="heart-handshake" style="width:12px; height:12px;"></i> Civic Score</span>
-                            <span class="stat-value">${stats.civic_score} <small style="font-size:11px; font-weight:500;">/ 100</small></span>
-                            <span class="stat-desc">Engagement index</span>
-                        </div>
-                        <div class="stat-card">
-                            <span class="stat-label"><i data-lucide="car" style="width:12px; height:12px;"></i> Car Access</span>
-                            <span class="stat-value">${stats.car_ownership_pct}%</span>
-                            <span class="stat-desc">Households with cars</span>
-                        </div>
-                    </div>
-                `;
-            }
-
-            let groupsHtml = '<div class="no-data-msg">No community groups registered in this area yet.</div>';
-            if (groups && groups.length > 0) {
-                groupsHtml = groups.map(g => `
-                    <div class="entity-card">
-                        <div class="entity-card-header">
-                            <h5 class="entity-name">${escapeHtml(g.group_name)}</h5>
-                            <span class="entity-tag">${escapeHtml(g.type)}</span>
-                        </div>
-                        <p class="entity-desc">${escapeHtml(g.description)}</p>
-                        <div class="entity-actions">
-                            ${g.website ? `<a href="${escapeHtml(g.website)}" target="_blank" rel="noopener noreferrer" class="entity-link"><i data-lucide="external-link"></i><span>Website</span></a>` : ''}
-                            ${g.contact_email ? `<a href="mailto:${escapeHtml(g.contact_email)}" class="entity-link"><i data-lucide="mail"></i><span>Email</span></a>` : ''}
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            const isLocked = state.lockedNeighborhood === name;
-
-            return `
-                <div class="neighborhood-title-card">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                        <h3>${escapeHtml(name)}</h3>
-                        ${isLocked ? '<span class="sidebar-badge" style="background-color: var(--accent-neon); color: white;">Locked</span>' : '<span class="sidebar-badge" style="background-color: var(--border-color); color: var(--text-secondary);">Hovering</span>'}
-                    </div>
-                    <span class="stat-area"><i data-lucide="map-pin" style="width:14px; height:14px; display:inline; vertical-align:middle; margin-right:4px;"></i>San Francisco District</span>
-                    ${isLocked ? `<p style="font-size:11px; margin-top:8px; color: var(--accent); cursor: pointer; font-weight: 600;" id="unlock-btn"><i data-lucide="lock" style="width:12px; height:12px; display:inline; vertical-align:middle; margin-right:4px;"></i>Locked view. Click here to unlock</p>` : ''}
-                </div>
-
-                ${statsHtml}
-
-                <div class="entity-list-section">
-                    <h4>Community Groups (${groups ? groups.length : 0})</h4>
-                    ${groupsHtml}
-                </div>
-            `;
-        },
-
-        // Marker item detail view (Libraries, newsrooms, etc.)
-        entityDetail: (title, category, addressInfo, description, website, logoFilename, additionalItems = []) => {
-            const hasLogo = !!logoFilename;
-            const logoUrl = hasLogo ? `assets/logos/${logoFilename}` : '';
-
-            let fallbackIcon = 'heart-handshake';
-            let fallbackStyle = '';
-            if (category.toLowerCase().includes('library')) {
-                fallbackIcon = 'book-open';
-                fallbackStyle = 'background-color: var(--accent-light); color: var(--accent);';
-            } else if (category.toLowerCase().includes('news')) {
-                fallbackIcon = 'newspaper';
-                fallbackStyle = 'background-color: #fef3c7; color: #d97706;';
-            } else if (category.toLowerCase().includes('award')) {
-                fallbackIcon = 'award';
-                fallbackStyle = 'background-color: #d1fae5; color: #059669;';
-            } else if (category.toLowerCase().includes('event')) {
-                fallbackIcon = 'calendar';
-                fallbackStyle = 'background-color: #ecdfec; color: #a21caf;';
-            }
-
-            let logoMarkup = `
-                <div class="marker-logo-container" style="${fallbackStyle}">
-                    ${hasLogo ? `<img src="${logoUrl}" alt="${escapeHtml(title)} logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="width:100%; height:100%; object-fit:contain; border-radius:var(--radius-sm);" />` : ''}
-                    <div class="marker-logo-fallback" style="${hasLogo ? 'display:none;' : 'display:flex;'} width:100%; height:100%; align-items:center; justify-content:center;">
-                        <i data-lucide="${fallbackIcon}" style="width:32px; height:32px;"></i>
-                    </div>
-                </div>
-            `;
-
-            const itemsHtml = additionalItems.map(item => `
-                <div class="marker-info-item">
-                    <i data-lucide="${item.icon}"></i>
-                    <span><strong>${item.label}:</strong> ${escapeHtml(item.value)}</span>
-                </div>
-            `).join('');
-
-            return `
-                <div class="marker-detail-card">
-                    ${logoMarkup}
-                    <h3>${escapeHtml(title)}</h3>
-                    <span class="marker-category">${escapeHtml(category)}</span>
-                    
-                    <div class="marker-info-item">
-                        <i data-lucide="map-pin"></i>
-                        <span>${escapeHtml(addressInfo)}</span>
-                    </div>
-                    
-                    ${itemsHtml}
-                    
-                    <p class="marker-desc">${escapeHtml(description)}</p>
-                    
-                    ${website ? `
-                        <a href="${escapeHtml(website)}" target="_blank" rel="noopener noreferrer" class="marker-btn">
-                            <i data-lucide="external-link"></i>
-                            <span>Visit Website</span>
-                        </a>
-                    ` : ''}
-                </div>
-            `;
-        }
-    };
-
-    // --- Helper Functions ---
     function escapeHtml(str) {
         if (!str) return '';
         return String(str)
@@ -202,6 +63,26 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/'/g, "&#039;");
     }
 
+    function isInvalidInfo(str) {
+        if (!str) return true;
+        const s = str.trim().toLowerCase();
+        return s === 'not found' || s === 'not listed' || s === 'none' || s === 'n/a' || s === 'null' || s === '';
+    }
+
+    function extractUrl(str) {
+        if (!str) return null;
+        const match = str.match(/https?:\/\/[^\s]+/i);
+        return match ? match[0] : null;
+    }
+
+    function getTagClass(label) {
+        if (!label) return 'tag-resident';
+        const l = label.toLowerCase();
+        if (l.includes('merchant') && l.includes('resident')) return 'tag-merchant-resident';
+        if (l.includes('merchant') || l.includes('business')) return 'tag-merchant';
+        return 'tag-resident';
+    }
+
     // Dynamic Icon Refreshing for dynamically injected markup
     function refreshIcons() {
         if (window.lucide) {
@@ -209,68 +90,335 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function getGroupsForNeighborhood(name) {
+        if (!name) return [];
+        const norm = normalizeNeighborhoodName(name);
+        return state.groupsByNeighborhood[norm] || [];
+    }
+
+    // --- Lock & Unlock State Handlers ---
+    function lockNeighborhood(name, lngLat) {
+        state.lockedNeighborhood = name;
+
+        // Clear hover states and hover popup
+        if (state.hoveredFeature && state.hoveredFeature.id !== undefined && state.map) {
+            try {
+                state.map.setFeatureState(
+                    { source: state.hoveredFeature.source, sourceLayer: state.hoveredFeature.sourceLayer, id: state.hoveredFeature.id },
+                    { state: false, hover: false }
+                );
+            } catch (err) {}
+            state.hoveredFeature = null;
+        }
+
+        if (state.hoverPopup) {
+            state.hoverPopup.remove();
+        }
+
+        // Display locked neighborhood in the sidebar
+        showNeighborhoodSidebar(name);
+
+        // Show locked popup at clicked position
+        if (lngLat && state.map) {
+            const groups = getGroupsForNeighborhood(name);
+            const count = groups.length;
+            const countStr = count > 0 ? `${count} Group${count === 1 ? '' : 's'}` : 'No groups registered';
+
+            if (!state.lockedPopup) {
+                state.lockedPopup = new mapboxgl.Popup({
+                    closeButton: true,
+                    closeOnClick: false,
+                    offset: 15
+                });
+
+                state.lockedPopup.on('close', () => {
+                    if (state.lockedNeighborhood) {
+                        unlockNeighborhood();
+                    }
+                });
+            }
+
+            state.lockedPopup
+                .setLngLat(lngLat)
+                .setHTML(`
+                    <div class="popup-title">${escapeHtml(name)}</div>
+                    <div class="popup-subtitle">${countStr}</div>
+                `)
+                .addTo(state.map);
+        }
+    }
+
+    function unlockNeighborhood() {
+        state.lockedNeighborhood = null;
+
+        if (state.hoveredFeature && state.hoveredFeature.id !== undefined && state.map) {
+            try {
+                state.map.setFeatureState(
+                    { source: state.hoveredFeature.source, sourceLayer: state.hoveredFeature.sourceLayer, id: state.hoveredFeature.id },
+                    { state: false, hover: false }
+                );
+            } catch (err) {}
+            state.hoveredFeature = null;
+        }
+
+        if (state.hoverPopup) {
+            state.hoverPopup.remove();
+        }
+        if (state.lockedPopup) {
+            state.lockedPopup.remove();
+        }
+
+        refreshSidebar();
+    }
+
+    // --- Dynamic Templates for details-panel ---
+    const templates = {
+        // Welcoming card
+        welcome: () => {
+            const totalGroups = state.allGroups.length;
+            const totalNeighborhoods = state.neighborhoodNames.length;
+
+            return `
+                <div class="welcome-card">
+                    <div class="welcome-icon">
+                        <i data-lucide="navigation"></i>
+                    </div>
+                    <h3>Explore San Francisco</h3>
+                    <p>San Francisco has over ${totalGroups} active neighborhood associations, merchant alliances, and community organizations across ${totalNeighborhoods} neighborhoods.</p>
+                    <p class="welcome-hint">Hover over or click any neighborhood boundary on the map to view its active groups, regular meeting times, next upcoming meetings, and direct contact details.</p>
+                </div>
+
+                <div class="sidebar-search-box">
+                    <div class="search-input-wrapper">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input 
+                            type="text" 
+                            id="sidebar-search-input" 
+                            class="sidebar-search-input" 
+                            placeholder="Search groups or neighborhoods..." 
+                            value="${escapeHtml(state.searchQuery)}"
+                        />
+                        ${state.searchQuery ? `<button id="search-clear-btn" class="search-clear-btn" aria-label="Clear search"><i data-lucide="x"></i></button>` : ''}
+                    </div>
+                </div>
+
+                ${renderDirectoryList()}
+            `;
+        },
+
+        // Neighborhood detail view
+        neighborhood: (name, groups) => {
+            const count = groups ? groups.length : 0;
+
+            let colloquialSub = '';
+            if (groups && groups.length > 0) {
+                const colloquials = [...new Set(groups.map(g => g['Neighborhood (what residents would call it)']).filter(c => c && !isInvalidInfo(c) && !c.toLowerCase().startsWith('many') && c.toLowerCase() !== name.toLowerCase()))];
+                if (colloquials.length > 0) {
+                    colloquialSub = `<div class="colloquial-note"><i data-lucide="info" style="width:12px; height:12px; display:inline; vertical-align:middle; margin-right:4px;"></i>Also known locally as: <strong>${escapeHtml(colloquials.join(', '))}</strong></div>`;
+                }
+            }
+
+            let groupsHtml = '<div class="no-data-msg">No neighborhood groups registered in this area yet.</div>';
+            if (count > 0) {
+                groupsHtml = groups.map(g => renderGroupCard(g)).join('');
+            }
+
+            return `
+                <div class="neighborhood-title-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px;">
+                        <h3>${escapeHtml(name)}</h3>
+                        <button id="close-neighborhood-btn" class="close-card-btn" aria-label="Close" title="Return to overview">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
+                    <span class="stat-area"><i data-lucide="map-pin" style="width:13px; height:13px; display:inline; vertical-align:middle; margin-right:4px;"></i>San Francisco Neighborhood</span>
+                    ${colloquialSub}
+                </div>
+
+                <div class="entity-list-section">
+                    <h4>Neighborhood Groups (${count})</h4>
+                    ${groupsHtml}
+                </div>
+            `;
+        }
+    };
+
+    function renderGroupCard(g) {
+        const name = g['Name of Neighborhood Group'] || 'Community Group';
+        const label = g['Resident/ Business label'] || 'Resident';
+        const tagClass = getTagClass(label);
+        const desc = g['Description'] || '';
+        const regMeeting = (g['Regular meeting time'] || '').trim();
+        const nextMeeting = (g['Next meeting'] || '').trim();
+        const website = (g['Website'] || '').trim();
+        const email = (g['Email'] || '').trim();
+
+        // Meeting details
+        let meetingsHtml = '';
+
+        if (!isInvalidInfo(nextMeeting)) {
+            meetingsHtml += `
+                <div class="entity-info-item">
+                    <i data-lucide="calendar-check"></i>
+                    <span><strong>Next Meeting:</strong> ${escapeHtml(nextMeeting)}</span>
+                </div>
+            `;
+        }
+
+        if (!isInvalidInfo(regMeeting)) {
+            const meetingUrl = extractUrl(regMeeting);
+            if (meetingUrl) {
+                meetingsHtml += `
+                    <div class="entity-info-item">
+                        <i data-lucide="calendar"></i>
+                        <span><strong>Schedule:</strong> <a href="${escapeHtml(meetingUrl)}" target="_blank" rel="noopener noreferrer" class="meeting-url-link">View Meeting Calendar <i data-lucide="external-link"></i></a></span>
+                    </div>
+                `;
+            } else {
+                meetingsHtml += `
+                    <div class="entity-info-item">
+                        <i data-lucide="clock"></i>
+                        <span><strong>Regular Meetings:</strong> ${escapeHtml(regMeeting)}</span>
+                    </div>
+                `;
+            }
+        }
+
+        // Actions
+        let actionsHtml = '';
+        const websiteUrl = extractUrl(website);
+        if (websiteUrl) {
+            actionsHtml += `
+                <a href="${escapeHtml(websiteUrl)}" target="_blank" rel="noopener noreferrer" class="entity-link entity-link--primary">
+                    <i data-lucide="globe"></i>
+                    <span>Website</span>
+                </a>
+            `;
+        }
+
+        if (!isInvalidInfo(email)) {
+            if (email.includes('@')) {
+                actionsHtml += `
+                    <a href="mailto:${escapeHtml(email)}" class="entity-link">
+                        <i data-lucide="mail"></i>
+                        <span>Email</span>
+                    </a>
+                `;
+            } else {
+                const contactUrl = extractUrl(email);
+                if (contactUrl) {
+                    actionsHtml += `
+                        <a href="${escapeHtml(contactUrl)}" target="_blank" rel="noopener noreferrer" class="entity-link">
+                            <i data-lucide="send"></i>
+                            <span>Contact Form</span>
+                        </a>
+                    `;
+                }
+            }
+        }
+
+        return `
+            <div class="entity-card">
+                <div class="entity-card-header">
+                    <h5 class="entity-name">${escapeHtml(name)}</h5>
+                    <span class="entity-tag ${tagClass}">${escapeHtml(label)}</span>
+                </div>
+                ${desc ? `<p class="entity-desc">${escapeHtml(desc)}</p>` : ''}
+                ${meetingsHtml ? `<div class="entity-meetings-container">${meetingsHtml}</div>` : ''}
+                ${actionsHtml ? `<div class="entity-actions">${actionsHtml}</div>` : ''}
+            </div>
+        `;
+    }
+
+    function renderDirectoryList() {
+        const query = state.searchQuery.trim().toLowerCase();
+
+        if (query) {
+            const matchedGroups = state.allGroups.filter(g => {
+                const name = (g['Name of Neighborhood Group'] || '').toLowerCase();
+                const desc = (g['Description'] || '').toLowerCase();
+                const nh = (g['Neighborhood (FOR ENG)'] || '').toLowerCase();
+                const colloquial = (g['Neighborhood (what residents would call it)'] || '').toLowerCase();
+                return name.includes(query) || desc.includes(query) || nh.includes(query) || colloquial.includes(query);
+            });
+
+            if (matchedGroups.length === 0) {
+                return `<div class="no-data-msg">No neighborhood groups match "<strong>${escapeHtml(state.searchQuery)}</strong>"</div>`;
+            }
+
+            return `
+                <div class="entity-list-section" style="margin-top: 20px;">
+                    <h4>Search Results (${matchedGroups.length})</h4>
+                    ${matchedGroups.map(g => renderGroupCard(g)).join('')}
+                </div>
+            `;
+        }
+
+        // Neighborhood directory list
+        return `
+            <div class="neighborhood-directory-section">
+                <h4>Neighborhood Directory</h4>
+                <div class="neighborhood-directory-list">
+                    ${state.neighborhoodNames.map(name => {
+                        const groups = getGroupsForNeighborhood(name);
+                        return `
+                            <button class="neighborhood-dir-item" data-neighborhood="${escapeHtml(name)}">
+                                <span class="nh-name">${escapeHtml(name)}</span>
+                                <span class="nh-count">${groups.length}</span>
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+
     // --- Data loading & initialization ---
     async function loadData() {
-        console.log("Loading datasets...");
+        console.log("Loading groups data from data/groups_data.json...");
 
         try {
-            // Helper to parse local CSV sheets via PapaParse
-            const parseCSV = (filepath) => {
-                return new Promise((resolve, reject) => {
-                    Papa.parse(filepath, {
-                        download: true,
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: (results) => resolve(results.data),
-                        error: (error) => reject(error)
-                    });
-                });
-            };
+            const response = await fetch('data/groups_data.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
-            // Concurrently load CSV sheets
-            const [
-                statsRaw,
-                groupsRaw,
-                librariesRaw,
-                civicRaw,
-                newsroomsRaw,
-                winnersRaw,
-                eventsRaw
-            ] = await Promise.all([
-                parseCSV('data/neighborhood_data.csv'),
-                parseCSV('data/neighborhood_groups.csv'),
-                parseCSV('data/libraries.csv'),
-                parseCSV('data/civic_orgs.csv'),
-                parseCSV('data/newsrooms.csv'),
-                parseCSV('data/award_winners.csv'),
-                parseCSV('data/events.csv')
-            ]);
+            const data = await response.json();
+            const rawSheetsData = data.sheets_data || [];
 
-            // Index stats: { "Mission": stats_record, ... }
-            statsRaw.forEach(row => {
-                if (row.neighborhood) {
-                    state.statsData[row.neighborhood.trim()] = row;
-                }
-            });
+            state.allGroups = rawSheetsData;
 
-            // Group community groups by neighborhood
-            groupsRaw.forEach(row => {
-                if (row.neighborhood) {
-                    const nh = row.neighborhood.trim();
-                    if (!state.groupsData[nh]) {
-                        state.groupsData[nh] = [];
+            // Index groups by normalized neighborhood names
+            const nhSet = new Set();
+
+            rawSheetsData.forEach(item => {
+                const engNh = item['Neighborhood (FOR ENG)'] || '';
+                const parts = engNh.split(',');
+
+                parts.forEach(part => {
+                    const rawName = part.trim();
+                    if (!rawName) return;
+
+                    nhSet.add(rawName);
+
+                    const norm = normalizeNeighborhoodName(rawName);
+                    if (!state.groupsByNeighborhood[norm]) {
+                        state.groupsByNeighborhood[norm] = [];
                     }
-                    state.groupsData[nh].push(row);
-                }
+                    state.groupsByNeighborhood[norm].push(item);
+                });
             });
 
-            state.librariesData = librariesRaw;
-            state.civicOrgsData = civicRaw;
-            state.newsroomsData = newsroomsRaw;
-            state.awardWinnersData = winnersRaw;
-            state.eventsData = eventsRaw;
+            state.neighborhoodNames = Array.from(nhSet).sort((a, b) => a.localeCompare(b));
 
-            console.log("All local CSV data parsed successfully!");
+            console.log(`Successfully loaded ${state.allGroups.length} groups across ${state.neighborhoodNames.length} neighborhoods.`);
+
+            // Update header badge
+            const layerBadge = document.getElementById('layer-badge');
+            if (layerBadge) {
+                layerBadge.textContent = `${state.allGroups.length} Groups`;
+            }
+
             initializeMap();
 
         } catch (error) {
@@ -281,8 +429,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <i data-lucide="alert-triangle"></i>
                     </div>
                     <h3>Error Loading Data</h3>
-                    <p>We encountered an issue downloading the local database tables.</p>
-                    <p class="welcome-hint">Please check that the local server is running and the data folder contains the correct CSV assets.</p>
+                    <p>We encountered an issue reading data/groups_data.json.</p>
+                    <p class="welcome-hint">Please verify that data/groups_data.json exists and is valid JSON.</p>
                 </div>
             `;
             refreshIcons();
@@ -295,8 +443,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
-        // Custom popup instance
-        state.popup = new mapboxgl.Popup({
+        // Custom hover popup instance (no close button)
+        state.hoverPopup = new mapboxgl.Popup({
             closeButton: false,
             closeOnClick: false,
             offset: 15
@@ -345,10 +493,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const map = state.map;
         const layerId = state.neighborhoodLayerId;
 
-        // Hover highlighting & instant sidebar loading
+        // Mouse Move over neighborhood polygons
         map.on('mousemove', layerId, (e) => {
-            if (state.activeLayer !== 'neighborhoods') return;
-            console.log("Active layer n confirmed");
+            // When a neighborhood is locked, completely disable hover preview and popups
+            if (state.lockedNeighborhood) {
+                map.getCanvas().style.cursor = 'pointer';
+                return;
+            }
 
             if (e.features && e.features.length > 0) {
                 map.getCanvas().style.cursor = 'pointer';
@@ -359,18 +510,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const featureKey = feature.id !== undefined ? feature.id : nhName;
 
-                // Only trigger update if we change features to avoid redundant DOM updates
+                // Update highlight state
                 if (!state.hoveredFeature || state.hoveredFeature.key !== featureKey) {
-                    // Reset previous hover state
                     if (state.hoveredFeature && state.hoveredFeature.id !== undefined) {
                         try {
                             map.setFeatureState(
                                 { source: state.hoveredFeature.source, sourceLayer: state.hoveredFeature.sourceLayer, id: state.hoveredFeature.id },
                                 { state: false, hover: false }
                             );
-                        } catch (err) {
-                            // ignore if featureState not supported on source
-                        }
+                        } catch (err) {}
                     }
 
                     state.hoveredFeature = {
@@ -380,44 +528,44 @@ document.addEventListener('DOMContentLoaded', () => {
                         sourceLayer: feature.sourceLayer
                     };
 
-                    // Set new hover state
                     if (feature.id !== undefined) {
                         try {
                             map.setFeatureState(
                                 { source: feature.source, sourceLayer: feature.sourceLayer, id: feature.id },
                                 { state: true, hover: true }
                             );
-                        } catch (err) {
-                            // ignore
-                        }
+                        } catch (err) {}
                     }
 
-                    // If we haven't locked a selection, show statistics on hover
-                    if (!state.lockedNeighborhood) {
-                        showNeighborhoodSidebar(nhName);
-                    }
+                    // Show neighborhood in the sidebar on hover
+                    showNeighborhoodSidebar(nhName);
                 }
 
-                // Show floating popup at mouse position
-                const stats = state.statsData[nhName];
-                const statsStr = stats && stats.population ? `Pop: ${Number(stats.population).toLocaleString()}` : '';
+                // Show floating hover popup at mouse position
+                if (state.hoverPopup) {
+                    const groups = getGroupsForNeighborhood(nhName);
+                    const count = groups.length;
+                    const countStr = count > 0 ? `${count} Group${count === 1 ? '' : 's'}` : 'No groups registered';
 
-                state.popup
-                    .setLngLat(e.lngLat)
-                    .setHTML(`
-                        <div class="popup-title">${escapeHtml(nhName)}</div>
-                        ${statsStr ? `<div class="popup-subtitle">${statsStr}</div>` : ''}
-                    `)
-                    .addTo(map);
+                    state.hoverPopup
+                        .setLngLat(e.lngLat)
+                        .setHTML(`
+                            <div class="popup-title">${escapeHtml(nhName)}</div>
+                            <div class="popup-subtitle">${countStr}</div>
+                        `)
+                        .addTo(map);
+                }
             }
         });
 
-        // Mouse leaves neighborhood
+        // Mouse leaves neighborhood layer
         map.on('mouseleave', layerId, () => {
-            if (state.activeLayer !== 'neighborhoods') return;
+            // When locked, do not reset view on mouseleave
+            if (state.lockedNeighborhood) {
+                return;
+            }
 
             map.getCanvas().style.cursor = '';
-            state.popup.remove();
 
             if (state.hoveredFeature && state.hoveredFeature.id !== undefined) {
                 try {
@@ -425,37 +573,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         { source: state.hoveredFeature.source, sourceLayer: state.hoveredFeature.sourceLayer, id: state.hoveredFeature.id },
                         { state: false, hover: false }
                     );
-                } catch (err) {
-                    // ignore
-                }
+                } catch (err) {}
                 state.hoveredFeature = null;
             }
 
-            // Restore the locked neighborhood details, or show welcome card
-            if (!state.lockedNeighborhood) {
-                const detailsContainer = document.getElementById('details-content');
-                detailsContainer.innerHTML = templates.welcome();
-                refreshIcons();
-            } else {
-                showNeighborhoodSidebar(state.lockedNeighborhood);
+            if (state.hoverPopup) {
+                state.hoverPopup.remove();
             }
+            refreshSidebar();
         });
 
-        // Click to Lock/Unlock sidebar view
-        map.on('click', layerId, (e) => {
-            if (state.activeLayer !== 'neighborhoods') return;
+        // Single unified click handler on map canvas
+        map.on('click', (e) => {
+            // If already locked, clicking anywhere on the map unlocks it!
+            if (state.lockedNeighborhood) {
+                unlockNeighborhood();
+                return;
+            }
 
-            if (e.features && e.features.length > 0) {
-                const nhName = e.features[0].properties && (e.features[0].properties.name || e.features[0].properties.NAME || e.features[0].properties.nhood);
-                if (!nhName) return;
-
-                // If it's already locked, clicking it again unlocks it
-                if (state.lockedNeighborhood === nhName) {
-                    state.lockedNeighborhood = null;
-                    showNeighborhoodSidebar(nhName); // updates sidebar state to Hovering badge
-                } else {
-                    state.lockedNeighborhood = nhName;
-                    showNeighborhoodSidebar(nhName); // updates sidebar state to Locked badge
+            // If not locked, check if click hit a neighborhood polygon to lock it
+            const features = map.queryRenderedFeatures(e.point, { layers: [layerId] });
+            if (features && features.length > 0) {
+                const nhName = features[0].properties && (features[0].properties.name || features[0].properties.NAME || features[0].properties.nhood);
+                if (nhName) {
+                    lockNeighborhood(nhName, e.lngLat);
                 }
             }
         });
@@ -463,377 +604,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Helper: Populate Neighborhood details into Sidebar ---
     function showNeighborhoodSidebar(name) {
-        const stats = state.statsData[name];
-        const groups = state.groupsData[name];
+        const groups = getGroupsForNeighborhood(name);
         const detailsContainer = document.getElementById('details-content');
 
-        detailsContainer.innerHTML = templates.neighborhood(name, stats, groups);
+        detailsContainer.innerHTML = templates.neighborhood(name, groups);
         refreshIcons();
 
-        // Add unlock button click listener if locked
-        const unlockBtn = document.getElementById('unlock-btn');
-        if (unlockBtn) {
-            unlockBtn.addEventListener('click', (e) => {
+        // Close button listener in sidebar card to unlock and return to hover / welcome
+        const closeBtn = document.getElementById('close-neighborhood-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                state.lockedNeighborhood = null;
-                showNeighborhoodSidebar(name);
+                unlockNeighborhood();
             });
         }
-    }
-
-    // --- Switch Active Map Layer ---
-    function switchLayer(layerId) {
-        if (state.activeLayer === layerId) return;
-        state.activeLayer = layerId;
-
-        console.log(`Switching map view to: ${layerId}`);
-
-        // Remove locked elements
-        state.lockedNeighborhood = null;
-        state.hoveredFeature = null;
-
-        // Update sidebar titles
-        const layerBadge = document.getElementById('layer-badge');
-        const sidebarTitle = document.getElementById('sidebar-title');
-
-        // Format names nicely
-        const titlesMapping = {
-            neighborhoods: 'Neighborhoods Layer',
-            libraries: 'Public Libraries',
-            civic_orgs: 'Civic & Volunteer Orgs',
-            newsrooms: 'Local Newsrooms',
-            award_winners: 'Good Neighbor Award Winners',
-            events: 'Events Layer'
-        };
-
-        sidebarTitle.textContent = titlesMapping[layerId] || 'Map Layer';
-        layerBadge.textContent = 'Active';
-
-        // Clear existing markers & popups
-        clearMarkers();
-        state.popup.remove();
-
-        const map = state.map;
-        const nhLayerId = state.neighborhoodLayerId;
-
-        if (layerId === 'neighborhoods') {
-            // Re-apply standard polygon opacity
-            if (map.getLayer(nhLayerId)) {
-                map.setPaintProperty(nhLayerId, 'fill-opacity', 0.8);
-            }
-
-            // Restore welcome sidebar
-            document.getElementById('details-content').innerHTML = templates.welcome();
-            refreshIcons();
-        } else {
-            // Turn down neighborhood fill opacity so it works as subtle skeleton context
-            if (map.getLayer(nhLayerId)) {
-                map.setPaintProperty(nhLayerId, 'fill-opacity', 0.15);
-            }
-
-            // Build markers corresponding to active layer
-            renderLayerMarkers(layerId);
-        }
-    }
-
-    // --- Clear All Dynamic Markers from Map ---
-    function clearMarkers() {
-        state.markers.forEach(m => m.remove());
-        state.markers = [];
-        state.activeMarkerEl = null;
-    }
-
-    // --- Render Custom Dynamic Markers for Point Layers ---
-    function renderLayerMarkers(layerId) {
-        let dataset = [];
-        let renderFn = null;
-
-        if (layerId === 'libraries') {
-            dataset = state.librariesData;
-            renderFn = createLibraryMarker;
-        } else if (layerId === 'civic_orgs') {
-            dataset = state.civicOrgsData;
-            renderFn = createCivicMarker;
-        } else if (layerId === 'newsrooms') {
-            dataset = state.newsroomsData;
-            renderFn = createNewsroomMarker;
-        } else if (layerId === 'award_winners') {
-            dataset = state.awardWinnersData;
-            renderFn = createAwardMarker;
-        } else if (layerId === 'events') {
-            dataset = state.eventsData;
-            renderFn = createEventMarker;
-        }
-
-        // Show welcome layer description in sidebar
-        const detailsContainer = document.getElementById('details-content');
-
-        const welcomeLayerText = {
-            libraries: 'Select a library branch pin on the map to view address details and location resources.',
-            civic_orgs: 'Select a civic/volunteer organization pin on the map to explore volunteer channels and organization info.',
-            newsrooms: 'Select a local newsroom pin on the map to explore hyper-local journalism resources by neighborhood.',
-            award_winners: 'Select an award winner star pin on the map to read the inspiring stories of outstanding SF residents.',
-            events: 'Select a calendar event pin on the map to view local 2026 SF Good Neighbor Week activities and signup forms.'
-        };
-
-        const welcomeLayerIcon = {
-            libraries: 'book-open',
-            civic_orgs: 'users',
-            newsrooms: 'newspaper',
-            award_winners: 'award',
-            events: 'calendar'
-        };
-
-        detailsContainer.innerHTML = `
-            <div class="welcome-card">
-                <div class="welcome-icon" style="background-color: var(--accent-light); color: var(--accent);">
-                    <i data-lucide="${welcomeLayerIcon[layerId]}"></i>
-                </div>
-                <h3>${escapeHtml(document.getElementById('sidebar-title').textContent)}</h3>
-                <p>${welcomeLayerText[layerId]}</p>
-            </div>
-        `;
-        refreshIcons();
-
-        // Render markers onto the map
-        dataset.forEach(row => {
-            const lat = parseFloat(row.latitude);
-            const lng = parseFloat(row.longitude);
-
-            if (isNaN(lat) || isNaN(lng)) return;
-
-            renderFn(row, [lng, lat]);
-        });
-    }
-
-    // 1. Library Markers Setup
-    function createLibraryMarker(row, coordinates) {
-        const el = document.createElement('div');
-        el.className = 'custom-marker';
-        el.innerHTML = `
-            <div class="marker-pin-wrapper">
-                <i data-lucide="book-open" style="width: 14px; height: 14px;"></i>
-            </div>
-        `;
-
-        const marker = new mapboxgl.Marker({ element: el })
-            .setLngLat(coordinates)
-            .addTo(state.map);
-
-        state.markers.push(marker);
-
-        // Sidebar detail triggers on marker click
-        el.addEventListener('click', (e) => {
-            e.stopPropagation();
-            highlightMarker(el);
-
-            const additional = [
-                { icon: 'info', label: 'Library System', value: 'San Francisco Public Library (SFPL)' }
-            ];
-
-            const sidebarHtml = templates.entityDetail(
-                row.name,
-                "San Francisco Public Library",
-                row.address,
-                "Free and open to the public. Offers books, community learning rooms, free Wi-Fi, computer labs, and weekly neighborhood story readings for families.",
-                row.website,
-                "",
-                additional
-            );
-
-            document.getElementById('details-content').innerHTML = sidebarHtml;
-            refreshIcons();
-
-            // Fly to marker center smoothly
-            state.map.easeTo({ center: coordinates, zoom: 13.5 });
-        });
-    }
-
-    // 2. Civic Organizations Markers Setup
-    function createCivicMarker(row, coordinates) {
-        const el = document.createElement('div');
-        el.className = 'custom-marker';
-        el.innerHTML = `
-            <div class="marker-pin-wrapper" style="border-color: #10b981; color: #10b981;">
-                <i data-lucide="users" style="width: 14px; height: 14px;"></i>
-            </div>
-        `;
-
-        const marker = new mapboxgl.Marker({ element: el })
-            .setLngLat(coordinates)
-            .addTo(state.map);
-
-        state.markers.push(marker);
-
-        el.addEventListener('click', (e) => {
-            e.stopPropagation();
-            highlightMarker(el);
-
-            const additional = [
-                { icon: 'tag', label: 'Activity Focus', value: row.category }
-            ];
-
-            const sidebarHtml = templates.entityDetail(
-                row.name,
-                "Civic & Volunteer Organization",
-                "San Francisco HQ Base",
-                row.description,
-                row.website,
-                row.logo_filename,
-                additional
-            );
-
-            document.getElementById('details-content').innerHTML = sidebarHtml;
-            refreshIcons();
-            state.map.easeTo({ center: coordinates, zoom: 13.5 });
-        });
-    }
-
-    // 3. Newsroom Markers Setup
-    function createNewsroomMarker(row, coordinates) {
-        const el = document.createElement('div');
-        el.className = 'custom-marker';
-        el.innerHTML = `
-            <div class="marker-pin-wrapper" style="border-color: #d97706; color: #d97706;">
-                <i data-lucide="newspaper" style="width: 14px; height: 14px;"></i>
-            </div>
-        `;
-
-        const marker = new mapboxgl.Marker({ element: el })
-            .setLngLat(coordinates)
-            .addTo(state.map);
-
-        state.markers.push(marker);
-
-        el.addEventListener('click', (e) => {
-            e.stopPropagation();
-            highlightMarker(el);
-
-            const additional = [
-                { icon: 'map', label: 'Coverage Area', value: row.neighborhood }
-            ];
-
-            const sidebarHtml = templates.entityDetail(
-                row.name,
-                "Local Newsroom / Independent Media",
-                `${row.neighborhood} District Base`,
-                row.description,
-                row.website,
-                row.logo_filename,
-                additional
-            );
-
-            document.getElementById('details-content').innerHTML = sidebarHtml;
-            refreshIcons();
-            state.map.easeTo({ center: coordinates, zoom: 13.5 });
-        });
-    }
-
-    // 4. Award Winners Markers Setup
-    function createAwardMarker(row, coordinates) {
-        const el = document.createElement('div');
-        el.className = 'custom-marker';
-        el.innerHTML = `
-            <div class="marker-pin-wrapper" style="border-color: #ef4444; color: #ef4444;">
-                <i data-lucide="star" style="width: 14px; height: 14px; fill: #fee2e2;"></i>
-            </div>
-        `;
-
-        const marker = new mapboxgl.Marker({ element: el })
-            .setLngLat(coordinates)
-            .addTo(state.map);
-
-        state.markers.push(marker);
-
-        el.addEventListener('click', (e) => {
-            e.stopPropagation();
-            highlightMarker(el);
-
-            const additional = [
-                { icon: 'shield-alert', label: 'Award Focus', value: row.award_category },
-                { icon: 'heart', label: 'Home District', value: row.neighborhood }
-            ];
-
-            const sidebarHtml = templates.entityDetail(
-                row.name,
-                "SF Good Neighbor Award Winner",
-                `Representative of ${row.neighborhood}`,
-                row.description,
-                row.website,
-                "",
-                additional
-            );
-
-            document.getElementById('details-content').innerHTML = sidebarHtml;
-            refreshIcons();
-            state.map.easeTo({ center: coordinates, zoom: 13.5 });
-        });
-    }
-
-    // 5. Event Markers Setup
-    function createEventMarker(row, coordinates) {
-        const el = document.createElement('div');
-        el.className = 'custom-marker';
-        el.innerHTML = `
-            <div class="marker-pin-wrapper" style="border-color: #a21caf; color: #a21caf;">
-                <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
-            </div>
-        `;
-
-        const marker = new mapboxgl.Marker({ element: el })
-            .setLngLat(coordinates)
-            .addTo(state.map);
-
-        state.markers.push(marker);
-
-        el.addEventListener('click', (e) => {
-            e.stopPropagation();
-            highlightMarker(el);
-
-            // Build custom markup for sidebar with Date Badge
-            const detailContainer = document.getElementById('details-content');
-            detailContainer.innerHTML = `
-                <div class="marker-detail-card">
-                    <span class="event-date-badge">${escapeHtml(row.date)}</span>
-                    <div class="marker-logo-container" style="background-color: #fae8ff; color: #a21caf;">
-                        <div class="marker-logo-fallback"><i data-lucide="calendar" style="width:32px; height:32px;"></i></div>
-                    </div>
-                    <h3>${escapeHtml(row.event_name)}</h3>
-                    <span class="marker-category">Good Neighbor Week Activity</span>
-                    
-                    <div class="marker-info-item">
-                        <i data-lucide="map-pin"></i>
-                        <span>${escapeHtml(row.location_name)}</span>
-                    </div>
-                    
-                    <div class="marker-info-item">
-                        <i data-lucide="clock"></i>
-                        <span><strong>Time:</strong> ${escapeHtml(row.time)}</span>
-                    </div>
-                    
-                    <p class="marker-desc">${escapeHtml(row.description)}</p>
-                    
-                    ${row.website ? `
-                        <a href="${escapeHtml(row.website)}" target="_blank" rel="noopener noreferrer" class="marker-btn" style="background-color:#a21caf; box-shadow: 0 4px 12px rgba(162,28,175,0.25);">
-                            <i data-lucide="ticket"></i>
-                            <span>Sign Up / Details</span>
-                        </a>
-                    ` : ''}
-                </div>
-            `;
-
-            refreshIcons();
-            state.map.easeTo({ center: coordinates, zoom: 13.5 });
-        });
-    }
-
-    // Toggle active marker UI highlighting
-    function highlightMarker(markerEl) {
-        if (state.activeMarkerEl) {
-            state.activeMarkerEl.classList.remove('active');
-        }
-        state.activeMarkerEl = markerEl;
-        markerEl.classList.add('active');
     }
 
     // --- Refresh/Load Sidebar View ---
@@ -841,6 +625,42 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('details-content');
         container.innerHTML = templates.welcome();
         refreshIcons();
+        bindSidebarEvents();
+    }
+
+    function bindSidebarEvents() {
+        // Search Input Handling
+        const searchInput = document.getElementById('sidebar-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                state.searchQuery = e.target.value;
+                refreshSidebar();
+                const newInput = document.getElementById('sidebar-search-input');
+                if (newInput) {
+                    newInput.focus();
+                    newInput.setSelectionRange(newInput.value.length, newInput.value.length);
+                }
+            });
+        }
+
+        const clearBtn = document.getElementById('search-clear-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                state.searchQuery = '';
+                refreshSidebar();
+            });
+        }
+
+        // Neighborhood Directory Item Click -> Lock neighborhood
+        const dirButtons = document.querySelectorAll('.neighborhood-dir-item');
+        dirButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const nhName = btn.getAttribute('data-neighborhood');
+                if (nhName) {
+                    lockNeighborhood(nhName, null);
+                }
+            });
+        });
     }
 
     // --- UI Listeners Binding ---
@@ -857,7 +677,6 @@ document.addEventListener('DOMContentLoaded', () => {
             mobileOverlay.classList.remove('open');
             menuToggle.setAttribute('aria-expanded', 'false');
             document.body.classList.remove('mobile-nav-locked');
-            // Reset to the main panel so the menu always reopens fresh
             mobileNavTrack.classList.remove('show-about');
             folderToggle.setAttribute('aria-expanded', 'false');
         };
@@ -877,7 +696,6 @@ document.addEventListener('DOMContentLoaded', () => {
             a.addEventListener('click', closeMobileMenu);
         });
 
-        // Sliding "Back" navigation into the About submenu panel
         folderToggle.addEventListener('click', () => {
             mobileNavTrack.classList.add('show-about');
             folderToggle.setAttribute('aria-expanded', 'true');
@@ -886,21 +704,6 @@ document.addEventListener('DOMContentLoaded', () => {
         backButton.addEventListener('click', () => {
             mobileNavTrack.classList.remove('show-about');
             folderToggle.setAttribute('aria-expanded', 'false');
-        });
-
-        // Dynamic layer switches binding
-        const layerButtons = document.querySelectorAll('.layer-btn');
-        layerButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const targetLayer = btn.getAttribute('data-layer');
-
-                // Update active buttons styles
-                layerButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-
-                // Orchestrate layer change
-                switchLayer(targetLayer);
-            });
         });
     }
 

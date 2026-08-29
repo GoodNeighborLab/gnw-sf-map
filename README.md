@@ -1,35 +1,50 @@
-# 2026 SF Good Neighbor Week Map
+# SF Good Neighbor Map
 
-An interactive, multi-layered dashboard of San Francisco's community infrastructure, designed to foster hyper-local connection during the **2026 SF Good Neighbor Week**. 
+An interactive map of San Francisco's neighborhood organizations, designed to foster hyper-local connection and community engagement for **Good Neighbor Lab**.
 
-Inspired by the work of Cartographer **Stephen Braitsch**, this web application visualizes 117 San Francisco neighborhood boundaries (from SF OpenData's SF Find Neighborhoods) along with rich layers of civic resources, public libraries, local newsrooms, award winners, and community events loaded dynamically from file-based CSV tables.
+This web application visualizes San Francisco neighborhood boundaries (from SF OpenData's SF Find Neighborhoods) mapped directly to verified, real-world neighborhood associations, merchant alliances, and community groups.
 
-This site is front-end only and prioritizes a responsive, premium experience for community engagement.
+This site is front-end only and provides a responsive, intuitive interface for exploring community organizations across the city.
 
 ---
 
 ## Technical Stack
 
 - **Map Engine:** [Mapbox GL JS v3](https://docs.mapbox.com/mapbox-gl-js/)
-- **Basemap & Neighborhood Vector Layer:** Custom Mapbox Studio Style (`mapbox://styles/max-gnw/cmspn14x2004101rggo7rfmns`) with embedded SF Find Neighborhood boundaries.
-- **CSV Data Ingestion:** [PapaParse](https://www.papaparse.com/)
+- **Basemap & Neighborhood Vector Layer:** Custom Mapbox Studio Style with embedded "SF Find Neighborhood" boundaries via SF City Government data.
+- **Data Ingestion:** Direct JSON ingestion of `data/groups_data.json` via native browser `fetch`.
+- **Data Pipeline:** Python script (`update_map_data.py`) syncing structured data directly from the Google Sheets project database.
 - **Typography:** Google Fonts (Outfit & Inter)
 - **Iconography:** [Lucide Icons](https://lucide.dev/)
 - **Styling:** Vanilla CSS with custom glassmorphism, responsive sidebar layout, and micro-animations.
 
 ---
 
-## Data Structure
+## Data Architecture
 
-All data is stored locally in CSV format within the `/data` directory:
+All application data is driven by verified records in `data/groups_data.json`:
 
-- `neighborhood_data.csv`: Demographic and civic engagement metrics across all 117 SF Find neighborhoods (population, area, civic score, car ownership rates).
-- `neighborhood_groups.csv`: Hyper-local neighborhood associations, merchant alliances, and volunteer groups.
-- `libraries.csv`: Branch locations and resources for the San Francisco Public Library (SFPL) system.
-- `civic_orgs.csv`: Volunteer and civic community organizations.
-- `newsrooms.csv`: Local neighborhood news outlets and independent community journalism.
-- `award_winners.csv`: Outstanding SF residents recognized for community service and neighborhood impact.
-- `events.csv`: Official Good Neighbor Week calendar activities.
+- `data/groups_data.json`: Structured records exported from the Good Neighbor Lab project database. Each record contains:
+  - **Name of Neighborhood Group**: Official organization title.
+  - **Resident / Business Label**: Categorization (`Resident`, `Merchant`, or `Merchant & Resident`).
+  - **Neighborhood**: One or more comma-separated SF Find neighborhood boundaries served by the group.
+  - **Neighborhood (Unofficial)**: Local colloquial neighborhood identification.
+  - **Description**: Summary of mission, history, and community focus.
+  - **Meeting Information**: Regular meeting cadences and next upcoming meeting schedules.
+  - **Contact & Web**: Direct official website URLs, email addresses, and contact forms.
+
+---
+
+## Updating Map Data
+
+To refresh the dataset from Google Sheets:
+First establish Google Application Default Credentials with access to the sheet.
+
+```bash
+python3 update_map_data.py
+```
+
+This writes updated records into `data/groups_data.json`.
 
 ---
 

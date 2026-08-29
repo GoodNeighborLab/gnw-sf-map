@@ -646,24 +646,125 @@ button {
     white-space: nowrap;
 }
 
+.entity-tag.tag-resident {
+    color: #059669;
+    background-color: #ecfdf5;
+}
+
+.entity-tag.tag-merchant {
+    color: #d97706;
+    background-color: #fffbeb;
+}
+
+.entity-tag.tag-merchant-resident {
+    color: #4f46e5;
+    background-color: #e0e7ff;
+}
+
+.colloquial-note {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+.colloquial-note strong {
+    color: var(--text-primary);
+}
+
 .entity-desc {
     font-size: 13px;
     color: var(--text-secondary);
     line-height: 1.5;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
+}
+
+.entity-meetings-container {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.entity-info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.entity-info-item i {
+    width: 14px;
+    height: 14px;
+    color: var(--accent);
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+
+.entity-info-item strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.meeting-url-link {
+    color: var(--accent);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.meeting-url-link:hover {
+    text-decoration: underline;
+}
+
+.meeting-url-link i {
+    width: 11px;
+    height: 11px;
 }
 
 .entity-actions {
     display: flex;
     gap: 12px;
+    flex-wrap: wrap;
 }
 
 .entity-link {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
     font-size: 12px;
     font-weight: 600;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    transition: all var(--transition-fast) ease;
+}
+
+.entity-link:hover {
+    background-color: var(--accent-light);
+    color: var(--accent);
+    border-color: var(--accent);
+    text-decoration: none;
+}
+
+.entity-link--primary {
+    background-color: var(--accent-light);
+    color: var(--accent);
+    border-color: transparent;
+}
+
+.entity-link--primary:hover {
+    background-color: var(--accent);
+    color: #ffffff;
 }
 
 .entity-link i {
@@ -671,12 +772,132 @@ button {
     height: 14px;
 }
 
+/* Sidebar Search Box */
+.sidebar-search-box {
+    margin: 20px 0 16px 0;
+}
+
+.search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    width: 16px;
+    height: 16px;
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.sidebar-search-input {
+    width: 100%;
+    padding: 10px 36px 10px 36px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 13px;
+    outline: none;
+    transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+}
+
+.sidebar-search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    background-color: var(--bg-secondary);
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    padding: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-clear-btn:hover {
+    color: var(--text-primary);
+}
+
+.search-clear-btn i {
+    width: 14px;
+    height: 14px;
+}
+
+/* Neighborhood Directory */
+.neighborhood-directory-section {
+    margin-top: 24px;
+}
+
+.neighborhood-directory-section h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
+
+.neighborhood-directory-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.neighborhood-dir-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-align: left;
+    transition: all var(--transition-fast) ease;
+    font-family: var(--font-body);
+}
+
+.neighborhood-dir-item:hover {
+    background-color: var(--bg-primary);
+    border-color: var(--border-color);
+}
+
+.neighborhood-dir-item .nh-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.neighborhood-dir-item .nh-count {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    background-color: var(--accent-light);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+}
+
 .no-data-msg {
     font-style: italic;
     color: var(--text-secondary);
     font-size: 13px;
     text-align: center;
-    padding: 16px;
+    padding: 24px 16px;
+    background-color: var(--bg-primary);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border-color);
 }
 
 /* Detail Card specifically for markers */
@@ -905,11 +1126,58 @@ button {
     font-weight: 700;
     font-size: 14px;
     margin-bottom: 2px;
+    padding-right: 12px;
 }
 
 .popup-subtitle {
     font-size: 11px;
     color: var(--text-secondary);
+}
+
+.mapboxgl-popup-close-button {
+    font-size: 18px;
+    line-height: 1;
+    color: var(--text-secondary);
+    padding: 4px 8px;
+    top: 4px;
+    right: 4px;
+    border-radius: var(--radius-sm);
+    outline: none;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: all var(--transition-fast) ease;
+}
+
+.mapboxgl-popup-close-button:hover {
+    color: var(--text-primary);
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.close-card-btn {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast) ease;
+    flex-shrink: 0;
+}
+
+.close-card-btn:hover {
+    background-color: var(--accent-light);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.close-card-btn i {
+    width: 14px;
+    height: 14px;
 }
 
 /* --- Scrollbar Customization --- */
