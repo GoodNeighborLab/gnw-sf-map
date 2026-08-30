@@ -1,0 +1,55 @@
+name: Grab data from Google Sheets
+
+on:
+  # Weekly Mon 2am
+  schedule:
+    - cron: 0 2 * * 1
+  # Or manually
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  sheets-job:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Sheets API
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        token_format: 'access_token' 
+        workload_identity_provider: 'projects/12360510688/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+        service_account: 'gnw-mapdata-exporter@fit-symbol-506805-q1.iam.gserviceaccount.com'
+        access_token_scopes: 'https://www.googleapis.com/auth/spreadsheets.readonly' 
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: pip install google-api-python-client google-auth
+
+    - name: Run Script using the Federated Token
+      env:
+        # Pass the dynamically generated token directly to your script environment
+        GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+      run: python update_map_data.py
+    
+    - name: Commit and Push changes
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@://github.com"
+        
+        if [ -n "$(git status --porcelain data/groups_data.json)" ]; then
+          git add data/groups_data.json
+          git commit -m "Automated JSON data update [skip ci]"
+          git push
+        else
+          echo "No changes detected in data/groups_data.json. Skipping commit."
+        fi
